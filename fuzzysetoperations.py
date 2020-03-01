@@ -42,4 +42,8 @@ def A1():
 
 a1 = A1()
 
+a1.graph(0,80)
+
 StandardComplement(a1)
+
+a1.graph(0,80)

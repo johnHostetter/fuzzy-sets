@@ -39,6 +39,7 @@ class FuzzySet:
                     A = FuzzySet(formulas)
         """
         self.formulas = formulas
+        self.name = name
     def fetch(self, x):
         """ 
         Fetch the corresponding formula for the provided x value where x is a(n) int/float.
@@ -49,18 +50,35 @@ class FuzzySet:
             if formula[1].contains(x): # check the formula's interval to see if it contains x
                 return formula
         return None
-
-#x = np.linspace(-2.5, 2.5, 1000)
-#x = Symbol('x')
-
-#z = np.piecewise(x, [x < 0, x >= 0], [lambda x: -x, lambda x: x])
-
-
     
-#plt.axes()
-#plt.xlim([-2.5, 2.5])
-#plt.xlabel('Elements of Universe')
-#plt.ylabel('Degree of Membership')
-#plt.plot(x, z, color='grey')
-#plt.legend()
-#plt.show()
+    def graph(self, lower=0, upper=100, samples=None):
+        """
+        Graphs the Fuzzy Set in the universe of elements.
+        
+        Accepts an optional lower and upper bound. If left unspecified, the lower bound will be
+        zero and the upper bound will be one hundred. The samples parameter specifies the number
+        of x values to test in the domain to approximate the graph. A higher sample value will
+        yield a higher resolution of the graph, but large values will lead to performance issues.
+        """
+        x_list = np.linspace(lower, upper, samples)
+        y_list = []
+        for x in x_list:
+            formula = self.fetch(x)[0]
+            try:
+                y = float(formula.subs(Symbol('x'), x))
+                print(y)
+            except AttributeError:
+                y = formula
+            y_list.append(y)
+        if self.name != None:    
+            plt.title('%s Fuzzy Set' % self.name)
+        else:
+            plt.title('Unnamed Fuzzy Set')
+        
+        plt.axes()
+        plt.xlim([lower, upper])
+        plt.xlabel('Elements of Universe')
+        plt.ylabel('Degree of Membership')
+        plt.plot(x_list, y_list, color='grey', label='mu')
+        plt.legend()
+        plt.show()
