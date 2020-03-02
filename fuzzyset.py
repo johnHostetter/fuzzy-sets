@@ -94,6 +94,11 @@ class FuzzyVariable(FuzzySet):
         FuzzySet.__init__(self)
         self.fuzzySets = fuzzySets
         self.name = name
+    def degree(self, x):
+        degrees = []
+        for fuzzySet in self.fuzzySets:
+            degrees.append(fuzzySet.degree(x))
+        return tuple(degrees)
     def graph(self, lower=0, upper=100, samples=100):
         """
         Graphs the Fuzzy Set in the universe of elements.
