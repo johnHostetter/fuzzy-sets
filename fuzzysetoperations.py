@@ -4,9 +4,7 @@ Created on Sun Mar  1 17:49:59 2020
 
 @author: jhost
 """
-
 from fuzzyset import FuzzySet
-from sympy import Symbol, Interval, oo # oo is infinity
 
 def StandardComplement(A):
     """
@@ -27,23 +25,25 @@ def StandardComplement(A):
         A.formulas = formulas
         return True
     return False
-            
 
-def A1():
-    """
-    A sample construction of a Fuzzy Set called A1.
-    """
-    formulas = []
-    x = Symbol('x')
-    formulas.append((1, Interval.Lopen(-oo,20)))
-    formulas.append(((35-x)/15,Interval.open(20,35)))
-    formulas.append((0, Interval.Ropen(35,oo)))
-    return FuzzySet(formulas, 'A1')
-
-a1 = A1()
-
-a1.graph(0,80)
-
-StandardComplement(a1)
-
-a1.graph(0,80)
+class StandardUnion(FuzzySet):
+    def __init__(self, fuzzysets, name=None):
+        FuzzySet.__init__(self)
+        self.fuzzysets = fuzzysets
+        self.name = name
+    def degree(self, x):
+        degrees = []
+        for fuzzyset in self.fuzzysets:
+            degrees.append(fuzzyset.degree(x))
+        return max(degrees)
+        
+class StandardIntersection(FuzzySet):
+    def __init__(self, fuzzysets, name=None):
+        FuzzySet.__init__(self)
+        self.fuzzysets = fuzzysets
+        self.name = name
+    def degree(self, x):
+        degrees = []
+        for fuzzyset in self.fuzzysets:
+            degrees.append(fuzzyset.degree(x))
+        return min(degrees)
