@@ -1,10 +1,7 @@
 import torch
-import torch.nn as nn
-
-from torch.nn.parameter import Parameter
 
 
-class AlgebraicProduct(nn.Module):
+class AlgebraicProduct(torch.nn.Module):
     """
     Implementation of the Algebraic Product t-norm (Fuzzy AND).
     Shape:
@@ -33,10 +30,10 @@ class AlgebraicProduct(nn.Module):
 
         # initialize antecedent importance
         if importance is None:
-            self.importance = Parameter(torch.tensor(1.0))
+            self.importance = torch.nn.parameter.Parameter(torch.tensor(1.0))
             self.importance.requires_grad = False
         else:
-            self.importance = Parameter(torch.abs(torch.tensor(importance)))  # importance can only be [0, 1]
+            self.importance = torch.nn.parameter.Parameter(torch.abs(torch.tensor(importance)))  # importance can only be [0, 1]
             self.importance.requires_grad = True
 
     def forward(self, x):
@@ -44,5 +41,5 @@ class AlgebraicProduct(nn.Module):
         Forward pass of the function.
         Applies the function to the input elementwise.
         """
-        self.importance = Parameter(torch.abs(self.importance))  # importance can only be [0, 1]
+        self.importance = torch.nn.parameter.Parameter(torch.abs(self.importance))  # importance can only be [0, 1]
         return torch.prod(torch.mul(torch.tensor(x), self.importance))
