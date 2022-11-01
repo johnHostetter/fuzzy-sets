@@ -56,3 +56,60 @@ class Gaussian(torch.nn.Module):
         # https://stackoverflow.com/questions/65022269/how-to-use-a-learnable-parameter-in-pytorch-constrained-between-0-and-1
 
         return torch.exp(-1.0 * (torch.pow(x - self.centers, 2) / torch.pow(self.sigmas, 2)))
+
+
+class Triangular(torch.nn.Module):
+    """
+    Implementation of the Triangular membership function.
+    Shape:
+        - Input: (N, *) where * means, any number of additional
+          dimensions
+        - Output: (N, *), same shape as the input
+    Parameters:
+        - centers: trainable parameter
+        - widths: trainable parameter
+    Examples:
+        # >>> a1 = triangular(256)
+        # >>> x = torch.randn(256)
+        # >>> x = a1(x)
+    """
+
+    def __init__(self, in_features, centers=None, widths=None, trainable=True):
+        """
+        Initialization.
+        INPUT:
+            - in_features: shape of the input
+            - centers: trainable parameter
+            - widths: trainable parameter
+            centers and widths are initialized randomly by default,
+            but widths must be > 0
+        """
+        super(Triangular, self).__init__()
+        self.in_features = in_features
+
+        # initialize centers
+        if centers is None:
+            self.centers = torch.nn.parameter.Parameter(torch.randn(self.in_features))
+        else:
+            self.centers = torch.tensor(centers)
+
+        # initialize sigmas
+        if widths is None:
+            self.widths = torch.nn.parameter.Parameter(torch.abs(torch.randn(self.in_features)))
+        else:
+            # we assume the sigmas are given to us are within (0, 1)
+            self.widths = torch.abs(torch.tensor(widths))
+
+        self.centers.requires_grad = trainable
+        self.widths.requiresGrad = trainable
+        self.centers.grad = None
+        self.widths.grad = None
+
+    def forward(self, x):
+        """
+        Forward pass of the function.
+        Applies the function to the input elementwise.
+        """
+        # https://stackoverflow.com/questions/65022269/how-to-use-a-learnable-parameter-in-pytorch-constrained-between-0-and-1
+
+        return torch.max(1.0 - (1.0 / self.widths) * torch.abs(x - self.centers), torch.tensor(0.0))
