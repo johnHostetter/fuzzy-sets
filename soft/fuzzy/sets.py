@@ -17,7 +17,7 @@ class Gaussian(torch.nn.Module):
         # >>> x = a1(x)
     """
 
-    def __init__(self, in_features, centers=None, sigmas=None, trainable=True):
+    def __init__(self, in_features, centers=None, sigmas=None, supports=None, trainable=True):
         """
         Initialization.
         INPUT:
@@ -38,15 +38,59 @@ class Gaussian(torch.nn.Module):
 
         # initialize sigmas
         if sigmas is None:
-            self.sigmas = torch.nn.parameter.Parameter(torch.abs(torch.randn(self.in_features)))
+            with torch.no_grad():
+                self.sigmas = torch.nn.parameter.Parameter(torch.abs(torch.randn(self.in_features)))
         else:
             # we assume the sigmas are given to us are within (0, 1)
-            self.sigmas = torch.abs(torch.tensor(sigmas))
+            with torch.no_grad():
+                self.sigmas = torch.abs(torch.tensor(sigmas))
+
+        # initialize support
+        if supports is None:
+            self.supports = torch.ones(self.in_features)
+        else:
+            self.supports = torch.abs(torch.tensor(supports))
 
         self.centers.requires_grad = trainable
         self.sigmas.requiresGrad = trainable
         self.centers.grad = None
         self.sigmas.grad = None
+
+    def reshape_parameters(self):
+        if self.centers.nelement() == 1:
+            self.centers = self.centers.reshape(1)
+        if self.sigmas.nelement() == 1:
+            self.sigmas = self.sigmas.reshape(1)
+        if self.supports.nelement() == 1:
+            self.supports = self.supports.reshape(1)
+
+    def extend(self, centers, sigmas, supports=None):
+        with torch.no_grad():
+            self.in_features += len(centers)
+            self.reshape_parameters()
+            self.centers = torch.cat([self.centers, torch.tensor(centers).reshape(1)])
+            self.sigmas = torch.cat([self.sigmas, torch.tensor(sigmas).reshape(1)])
+            if supports is None:
+                self.supports = torch.cat([self.supports, torch.tensor(torch.ones(len(centers)))])
+            else:
+                self.supports = torch.cat([self.supports, torch.tensor(supports).reshape(1)])
+
+    def increase_support_of(self, index):
+        """
+        The 'index' refers to the index of a Gaussian fuzzy set on this dimension.
+
+        We want to increase the support or the count of this fuzzy set as the number of
+        data points increase that shows the fuzzy set located at 'index' is satisfactory for representing them.
+
+        Args:
+            index:
+
+        Returns:
+
+        """
+        values = torch.zeros(self.supports.shape)
+        values[index] = 1
+        self.supports = torch.add(self.supports, values)
 
     def forward(self, x):
         """
