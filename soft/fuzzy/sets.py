@@ -55,6 +55,18 @@ class Gaussian(torch.nn.Module):
         self.sigmas.requiresGrad = trainable
         self.centers.grad = None
         self.sigmas.grad = None
+        self.sort()
+
+    def sort(self):
+        with torch.no_grad():
+            # sorting according to centers
+            if self.centers.nelement() > 1:
+                sorted_centers, indices = torch.sort(self.centers)
+                sorted_sigmas = self.sigmas.gather(0, indices.argsort())
+                sorted_supports = self.supports.gather(0, indices.argsort())
+                self.centers = sorted_centers
+                self.sorted_sigmas = sorted_sigmas
+                self.sorted_supports = sorted_supports
 
     def reshape_parameters(self):
         if self.centers.nelement() == 1:
@@ -74,6 +86,7 @@ class Gaussian(torch.nn.Module):
                 self.supports = torch.cat([self.supports, torch.tensor(torch.ones(len(centers)))])
             else:
                 self.supports = torch.cat([self.supports, torch.tensor(supports).reshape(1)])
+        self.sort()
 
     def increase_support_of(self, index):
         """
