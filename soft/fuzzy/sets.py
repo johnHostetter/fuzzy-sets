@@ -10,27 +10,30 @@ class Base(torch.nn.Module):
         if centers is None:
             self.centers = torch.nn.parameter.Parameter(torch.randn(self.in_features))
         else:
-            self.centers = torch.tensor(centers)
+            self.centers = torch.nn.parameter.Parameter(centers)
 
         # initialize sigmas
         if widths is None:
             with torch.no_grad():
                 self.widths = torch.nn.parameter.Parameter(torch.abs(torch.randn(self.in_features)))
+            self.widths.requires_grad = True
         else:
             # we assume the widths are given to us are within (0, 1)
             with torch.no_grad():
-                self.widths = torch.abs(torch.tensor(widths))
+                self.widths = torch.nn.parameter.Parameter(torch.abs(widths))
+            self.widths.requires_grad = True
 
         # initialize support
         if supports is None:
             self.supports = torch.ones(self.in_features)
         else:
-            self.supports = torch.abs(torch.tensor(supports))
+            self.supports = torch.abs(supports)
 
         self.centers.requires_grad = trainable
         self.widths.requiresGrad = trainable
-        self.centers.grad = None
-        self.widths.grad = None
+        if not trainable:
+            self.centers.grad = None
+            self.widths.grad = None
         self.sort()
 
     def sort(self):
@@ -40,24 +43,28 @@ class Base(torch.nn.Module):
                 sorted_centers, indices = torch.sort(self.centers)
                 sorted_widths = self.widths.gather(0, indices.argsort())
                 sorted_supports = self.supports.gather(0, indices.argsort())
-                self.centers = sorted_centers
-                self.widths = sorted_widths
+                self.centers = torch.nn.Parameter(sorted_centers)
+                self.widths = torch.nn.Parameter(sorted_widths)
                 self.supports = sorted_supports
+        self.centers.requires_grad = True
+        self.widths.requires_grad = True
 
     def reshape_parameters(self):
         if self.centers.nelement() == 1:
             self.centers = self.centers.reshape(1)
         if self.widths.nelement() == 1:
-            self.widths = self.widths.reshape(1)
+            self.widths = torch.nn.Parameter(self.widths.reshape(1))
         if self.supports.nelement() == 1:
             self.supports = self.supports.reshape(1)
+        self.centers.requires_grad = True
+        self.widths.requires_grad = True
 
     def extend(self, centers, sigmas, supports=None):
         with torch.no_grad():
             self.in_features += len(centers)
             self.reshape_parameters()
-            self.centers = torch.cat([self.centers, torch.tensor(centers).reshape(1)])
-            self.widths = torch.cat([self.widths, torch.tensor(sigmas).reshape(1)])
+            self.centers = torch.nn.Parameter(torch.cat([self.centers, torch.tensor(centers).reshape(1)]))
+            self.widths = torch.nn.Parameter(torch.cat([self.widths, torch.tensor(sigmas).reshape(1)]))
             if supports is None:
                 self.supports = torch.cat([self.supports, torch.tensor(torch.ones(len(centers)))])
             else:
@@ -79,7 +86,8 @@ class Base(torch.nn.Module):
         """
         values = torch.zeros(self.supports.shape)
         values[index] = 1
-        self.supports = torch.add(self.supports, values)
+        with torch.no_grad():
+            self.supports = torch.add(self.supports, values)
 
     def forward(self):
         raise NotImplementedError('The Base Fuzzy Set has no membership function defined.')
@@ -119,7 +127,7 @@ class Gaussian(Base):
 
     @sigmas.setter
     def sigmas(self, sigmas):
-        self.widths = sigmas
+        self.widths = torch.nn.Parameter(sigmas)
 
     def forward(self, x):
         """
