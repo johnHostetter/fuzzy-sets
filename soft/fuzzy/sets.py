@@ -2,15 +2,18 @@ import torch
 
 
 class Base(torch.nn.Module):
-    def __init__(self, in_features, centers=None, widths=None, supports=None, trainable=True):
+    def __init__(self, in_features, centers=None, widths=None, supports=None,
+                 trainable=True, sort_by='centers'):
         super(Base, self).__init__()
         self.in_features = in_features
         self._log_widths = None
+        self.sort_by = sort_by
 
         # initialize centers
         if centers is None:
             self.centers = torch.nn.parameter.Parameter(torch.randn(self.in_features))
         else:
+            centers = self.convert_to_tensor(centers)
             self.centers = torch.nn.parameter.Parameter(centers)
 
         # initialize widths -- never adjust the widths directly, use the logarithm of them to avoid negatives
@@ -22,6 +25,7 @@ class Base(torch.nn.Module):
         else:
             # we assume the widths are given to us are within (0, 1)
             with torch.no_grad():
+                widths = self.convert_to_tensor(widths)
                 self.widths = torch.abs(widths)
 
         self.log_widths()  # update the stored log widths
@@ -30,15 +34,24 @@ class Base(torch.nn.Module):
         if supports is None:
             self.supports = torch.ones(self.in_features)
         else:
+            supports = self.convert_to_tensor(supports)
             self.supports = torch.abs(supports)
 
         self.trainable = self.train(mode=trainable)
-        self.sort()
+        if sort_by == 'centers':
+            self.sort()
 
     def log_widths(self):
         with torch.no_grad():
             self._log_widths = torch.nn.parameter.Parameter(torch.log(self.widths))
         return self._log_widths
+
+    @staticmethod
+    def convert_to_tensor(values):
+        if isinstance(values, torch.Tensor):
+            return values
+        else:
+            return torch.tensor(values)
 
     def train(self, mode):
         """
@@ -125,7 +138,8 @@ class Gaussian(Base):
         # >>> x = a1(x)
     """
 
-    def __init__(self, in_features, centers=None, sigmas=None, supports=None, trainable=True):
+    def __init__(self, in_features, centers=None, sigmas=None, supports=None,
+                 trainable=True, sort_by='centers'):
         """
         Initialization.
         INPUT:
@@ -135,7 +149,7 @@ class Gaussian(Base):
             centers and sigmas are initialized randomly by default,
             but sigmas must be > 0
         """
-        super(Gaussian, self).__init__(in_features, centers, sigmas, supports, trainable)
+        super(Gaussian, self).__init__(in_features, centers, sigmas, supports, trainable, sort_by)
 
     @property
     def sigmas(self):
@@ -179,7 +193,8 @@ class Triangular(Base):
         # >>> x = a1(x)
     """
 
-    def __init__(self, in_features, centers=None, widths=None, supports=None, trainable=True):
+    def __init__(self, in_features, centers=None, widths=None, supports=None,
+                 trainable=True, sort_by='centers'):
         """
         Initialization.
         INPUT:
@@ -189,7 +204,7 @@ class Triangular(Base):
             centers and widths are initialized randomly by default,
             but widths must be > 0
         """
-        super(Triangular, self).__init__(in_features, centers, widths, supports, trainable)
+        super(Triangular, self).__init__(in_features, centers, widths, supports, trainable, sort_by)
 
     def forward(self, x):
         """
