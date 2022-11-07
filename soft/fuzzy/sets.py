@@ -5,6 +5,7 @@ class Base(torch.nn.Module):
     def __init__(self, in_features, centers=None, widths=None, supports=None, trainable=True):
         super(Base, self).__init__()
         self.in_features = in_features
+        self._log_widths = None
 
         # initialize centers
         if centers is None:
@@ -12,16 +13,18 @@ class Base(torch.nn.Module):
         else:
             self.centers = torch.nn.parameter.Parameter(centers)
 
-        # initialize sigmas
-        if widths is None:
+        # initialize widths -- never adjust the widths directly, use the logarithm of them to avoid negatives
+        if widths is None:  # we apply the logarithm to the widths, so later, if we train them, and they become
+            # nonzero, with an exponential function they are still positive
+            # in other words, since gradient descent may make the widths negative, we nullify that effect
             with torch.no_grad():
-                self.widths = torch.nn.parameter.Parameter(torch.abs(torch.randn(self.in_features)))
-            self.widths.requires_grad = True
+                self.widths = torch.rand(self.in_features)
         else:
             # we assume the widths are given to us are within (0, 1)
             with torch.no_grad():
-                self.widths = torch.nn.parameter.Parameter(torch.abs(widths))
-            self.widths.requires_grad = True
+                self.widths = torch.abs(widths)
+
+        self.log_widths()  # update the stored log widths
 
         # initialize support
         if supports is None:
@@ -29,12 +32,24 @@ class Base(torch.nn.Module):
         else:
             self.supports = torch.abs(supports)
 
-        self.centers.requires_grad = trainable
-        self.widths.requiresGrad = trainable
-        if not trainable:
-            self.centers.grad = None
-            self.widths.grad = None
+        self.trainable = self.train(mode=trainable)
         self.sort()
+
+    def log_widths(self):
+        with torch.no_grad():
+            self._log_widths = torch.nn.parameter.Parameter(torch.log(self.widths))
+        return self._log_widths
+
+    def train(self, mode):
+        """
+        Disable/enable training for the granules' parameters.
+        """
+        self.centers.requires_grad = mode
+        self._log_widths.requiresGrad = mode
+        if not mode:
+            self.centers.grad = None
+            self._log_widths.grad = None
+        return mode
 
     def sort(self):
         with torch.no_grad():
@@ -44,31 +59,32 @@ class Base(torch.nn.Module):
                 sorted_widths = self.widths.gather(0, indices.argsort())
                 sorted_supports = self.supports.gather(0, indices.argsort())
                 self.centers = torch.nn.Parameter(sorted_centers)
-                self.widths = torch.nn.Parameter(sorted_widths)
+                self.widths = sorted_widths
                 self.supports = sorted_supports
-        self.centers.requires_grad = True
-        self.widths.requires_grad = True
+        self.log_widths()  # update the stored log widths
+        self.train(self.trainable)
 
     def reshape_parameters(self):
         if self.centers.nelement() == 1:
-            self.centers = self.centers.reshape(1)
+            self.centers = torch.nn.Parameter(self.centers.reshape(1))
         if self.widths.nelement() == 1:
-            self.widths = torch.nn.Parameter(self.widths.reshape(1))
+            self.widths = self.widths.reshape(1)
         if self.supports.nelement() == 1:
             self.supports = self.supports.reshape(1)
-        self.centers.requires_grad = True
-        self.widths.requires_grad = True
+        self.log_widths()  # update the stored log widths
+        self.train(self.trainable)
 
     def extend(self, centers, sigmas, supports=None):
         with torch.no_grad():
             self.in_features += len(centers)
             self.reshape_parameters()
             self.centers = torch.nn.Parameter(torch.cat([self.centers, torch.tensor(centers).reshape(1)]))
-            self.widths = torch.nn.Parameter(torch.cat([self.widths, torch.tensor(sigmas).reshape(1)]))
+            self.widths = torch.cat([self.widths, torch.tensor(sigmas).reshape(1)])
             if supports is None:
                 self.supports = torch.cat([self.supports, torch.tensor(torch.ones(len(centers)))])
             else:
                 self.supports = torch.cat([self.supports, torch.tensor(supports).reshape(1)])
+        self.log_widths()  # update the stored log widths
         self.sort()
 
     def increase_support_of(self, index):
@@ -127,7 +143,7 @@ class Gaussian(Base):
 
     @sigmas.setter
     def sigmas(self, sigmas):
-        self.widths = torch.nn.Parameter(sigmas)
+        self.widths = sigmas
 
     def forward(self, x):
         """
@@ -136,7 +152,15 @@ class Gaussian(Base):
         """
         # https://stackoverflow.com/questions/65022269/how-to-use-a-learnable-parameter-in-pytorch-constrained-between-0-and-1
 
-        return torch.exp(-1.0 * (torch.pow(x - self.centers, 2) / torch.pow(self.sigmas, 2)))
+        log_results = torch.exp(-1.0 * (torch.pow(x - self.centers, 2) / torch.pow(torch.exp(self._log_widths), 2)))
+        no_log_results = torch.exp(-1.0 * (torch.pow(x - self.centers, 2) / torch.pow(self.widths, 2)))
+        # if not torch.allclose(log_results, no_log_results, rtol=1e-01, atol=1e-01):
+        #     print('with logs: {}'.format(log_results))
+        #     print('w/o logs: {}'.format(no_log_results))
+        #     print('stop')
+        #     quit()
+        return no_log_results
+        # return torch.exp(-1.0 * (torch.pow(x - self.centers, 2) / torch.pow(torch.exp(self._log_widths), 2)))
 
 
 class Triangular(Base):
@@ -174,4 +198,4 @@ class Triangular(Base):
         """
         # https://stackoverflow.com/questions/65022269/how-to-use-a-learnable-parameter-in-pytorch-constrained-between-0-and-1
 
-        return torch.max(1.0 - (1.0 / self.widths) * torch.abs(x - self.centers), torch.tensor(0.0))
+        return torch.max(1.0 - (1.0 / torch.exp(self._log_widths)) * torch.abs(x - self.centers), torch.tensor(0.0))
