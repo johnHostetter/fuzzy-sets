@@ -65,17 +65,18 @@ class Base(torch.nn.Module):
         return mode
 
     def sort(self):
-        with torch.no_grad():
-            # sorting according to centers
-            if self.centers.nelement() > 1:
-                sorted_centers, indices = torch.sort(self.centers)
-                sorted_widths = self.widths.gather(0, indices.argsort())
-                sorted_supports = self.supports.gather(0, indices.argsort())
-                self.centers = torch.nn.Parameter(sorted_centers)
-                self.widths = sorted_widths
-                self.supports = sorted_supports
-        self.log_widths()  # update the stored log widths
-        self.train(self.trainable)
+        pass
+        # with torch.no_grad():
+        #     # sorting according to centers
+        #     if self.centers.nelement() > 1:
+        #         sorted_centers, indices = torch.sort(self.centers)
+        #         sorted_widths = self.widths.gather(0, indices.argsort())
+        #         sorted_supports = self.supports.gather(0, indices.argsort())
+        #         self.centers = torch.nn.Parameter(sorted_centers)
+        #         self.widths = sorted_widths
+        #         self.supports = sorted_supports
+        # self.log_widths()  # update the stored log widths
+        # self.train(self.trainable)
 
     def reshape_parameters(self):
         if self.centers.nelement() == 1:
