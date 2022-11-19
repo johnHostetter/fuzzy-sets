@@ -51,7 +51,7 @@ class Base(torch.nn.Module):
         if isinstance(values, torch.Tensor):
             return values
         else:
-            return torch.tensor(values)
+            return torch.tensor(values).float()
 
     def train(self, mode):
         """
