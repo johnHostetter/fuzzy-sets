@@ -11,14 +11,44 @@ class OrderedWeightedAveraging(torch.nn.Module):
     def __init__(self, in_features, weight):
         super(OrderedWeightedAveraging, self).__init__()
         self.in_features = in_features
+        if self.in_features != len(weight):
+            raise AttributeError('The number of input features expected in the Ordered Weighted Averaging operator'
+                                 'is expected to equal the number of elements in the weight vector.')
         with torch.no_grad():
             if weight.sum() == 1.0:
                 self.weight = torch.nn.parameter.Parameter(torch.abs(weight))
             else:
                 raise AttributeError('The weight vector of the Ordered Weighted Averaging operator must sum to 1.0.')
 
+    def orness(self):
+        """
+        A degree of 1 means the OWA operator is the 'or' operator, and this occurs when the first
+        element of the weight vector is equal to 1 and all other elements in the weight vector are zero.
+
+        Returns:
+            The degree to which the Ordered Weighted Averaging operator is an 'or' operator.
+        """
+        n = self.in_features
+        return (1 / (n - 1)) * torch.tensor([(n - i) * self.weight[i - 1] for i in range(1, n + 1)]).sum()
+
+    def dispersion(self):
+        """
+        The measure of dispersion; essentially, it is a measure of entropy that is related to the
+        Shannon information concept. The more disperse the weight vector, the more information is being used
+        in the aggregation of the aggregate value.
+
+        Returns:
+            The amount of dispersion in the weight vector.
+        """
+        if len(torch.where(self.weight == 1.0)[0]) == 1:  # there is exactly one entry where it is equal to one
+            return torch.zeros(1)
+        else:
+            return -1 * (self.weight * torch.log(self.weight)).sum()
+
     def forward(self, x):
         """
+        Applies the Ordered Weighted Averaging operator. First, it will sort the argument in descending order,
+        then multiply by the weight vector, and finally sum over the entries.
 
         Args:
             x: Argument vector, unordered.
