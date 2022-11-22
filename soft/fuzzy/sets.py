@@ -97,7 +97,11 @@ class Base(torch.nn.Module):
             except RuntimeError:  # RuntimeError: shape '[1]' is invalid for input of size 4
                 self.centers = torch.nn.Parameter(torch.cat([self.centers, torch.tensor(centers)]))
 
-            self.widths = torch.cat([self.widths, torch.tensor(widths).reshape(1)])
+            try:
+                self.widths = torch.cat([self.widths, torch.tensor(widths).reshape(1)])
+            except ValueError:
+                print((self.widths, widths))
+                self.widths = torch.cat([self.widths, torch.tensor(widths)])
             if supports is None:
                 self.supports = torch.cat([self.supports, torch.tensor(torch.ones(len(centers)))])
             else:
