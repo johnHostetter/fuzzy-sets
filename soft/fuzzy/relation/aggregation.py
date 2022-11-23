@@ -8,15 +8,15 @@ class OrderedWeightedAveraging(torch.nn.Module):
     An operator that lies between the 'anding' or the 'oring' of multiple criteria. The weight vector
     allows us to easily adjust the degree of 'anding' and 'oring' implicit in the aggregation.
     """
-    def __init__(self, in_features, weight):
+    def __init__(self, in_features, weights):
         super(OrderedWeightedAveraging, self).__init__()
         self.in_features = in_features
-        if self.in_features != len(weight):
+        if self.in_features != len(weights):
             raise AttributeError('The number of input features expected in the Ordered Weighted Averaging operator'
                                  'is expected to equal the number of elements in the weight vector.')
         with torch.no_grad():
-            if weight.sum() == 1.0:
-                self.weight = torch.nn.parameter.Parameter(torch.abs(weight))
+            if weights.sum() == 1.0:
+                self.weights = torch.nn.parameter.Parameter(torch.abs(weights))
             else:
                 raise AttributeError('The weight vector of the Ordered Weighted Averaging operator must sum to 1.0.')
 
@@ -29,7 +29,7 @@ class OrderedWeightedAveraging(torch.nn.Module):
             The degree to which the Ordered Weighted Averaging operator is an 'or' operator.
         """
         n = self.in_features
-        return (1 / (n - 1)) * torch.tensor([(n - i) * self.weight[i - 1] for i in range(1, n + 1)]).sum()
+        return (1 / (n - 1)) * torch.tensor([(n - i) * self.weights[i - 1] for i in range(1, n + 1)]).sum()
 
     def dispersion(self):
         """
@@ -40,10 +40,10 @@ class OrderedWeightedAveraging(torch.nn.Module):
         Returns:
             The amount of dispersion in the weight vector.
         """
-        if len(torch.where(self.weight == 1.0)[0]) == 1:  # there is exactly one entry where it is equal to one
+        if len(torch.where(self.weights == 1.0)[0]) == 1:  # there is exactly one entry where it is equal to one
             return torch.zeros(1)
         else:
-            return -1 * (self.weight * torch.log(self.weight)).sum()
+            return -1 * (self.weights * torch.log(self.weights)).sum()
 
     def forward(self, x):
         """
@@ -57,4 +57,4 @@ class OrderedWeightedAveraging(torch.nn.Module):
             The aggregation of the ordered argument vector with the weight vector.
         """
         ordered_argument_vector = torch.sort(x, descending=True)  # namedtuple with 'values' and 'indices' properties
-        return (self.weight * ordered_argument_vector.values).sum()
+        return (self.weights * ordered_argument_vector.values).sum()
