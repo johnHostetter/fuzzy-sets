@@ -2,7 +2,7 @@ import torch
 
 
 class Base(torch.nn.Module):
-    def __init__(self, in_features, centers=None, widths=None, supports=None,
+    def __init__(self, in_features, centers=None, widths=None, supports=None, labels=None,
                  trainable=True, sort_by='centers'):
         super(Base, self).__init__()
         self.in_features = in_features
@@ -37,6 +37,7 @@ class Base(torch.nn.Module):
             supports = self.convert_to_tensor(supports)
             self.supports = torch.abs(supports)
 
+        self.labels = labels
         self.trainable = self.train(mode=trainable)
         if sort_by == 'centers':
             self.sort()
@@ -150,7 +151,7 @@ class Gaussian(Base):
         # >>> x = a1(x)
     """
 
-    def __init__(self, in_features, centers=None, sigmas=None, supports=None,
+    def __init__(self, in_features, centers=None, widths=None, supports=None, labels=None,
                  trainable=True, sort_by='centers'):
         """
         Initialization.
@@ -161,7 +162,7 @@ class Gaussian(Base):
             centers and sigmas are initialized randomly by default,
             but sigmas must be > 0
         """
-        super(Gaussian, self).__init__(in_features, centers, sigmas, supports, trainable, sort_by)
+        super(Gaussian, self).__init__(in_features, centers, widths, supports, labels, trainable, sort_by)
 
     @property
     def sigmas(self):
@@ -205,7 +206,7 @@ class Triangular(Base):
         # >>> x = a1(x)
     """
 
-    def __init__(self, in_features, centers=None, widths=None, supports=None,
+    def __init__(self, in_features, centers=None, widths=None, supports=None, labels=None,
                  trainable=True, sort_by='centers'):
         """
         Initialization.
@@ -216,7 +217,7 @@ class Triangular(Base):
             centers and widths are initialized randomly by default,
             but widths must be > 0
         """
-        super(Triangular, self).__init__(in_features, centers, widths, supports, trainable, sort_by)
+        super(Triangular, self).__init__(in_features, centers, widths, supports, labels, trainable, sort_by)
 
     def forward(self, x):
         """
