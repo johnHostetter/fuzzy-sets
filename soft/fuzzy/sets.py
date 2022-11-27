@@ -104,7 +104,7 @@ class Base(torch.nn.Module):
                 print((self.widths, widths))
                 self.widths = torch.cat([self.widths, torch.tensor(widths)])
             if supports is None:
-                self.supports = torch.cat([self.supports, torch.tensor(torch.ones(len(centers)))])
+                self.supports = torch.cat([self.supports, torch.ones(len(centers))])
             else:
                 try:
                     self.supports = torch.cat([self.supports, torch.tensor(supports).reshape(1)])
