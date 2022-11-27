@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 
 
 class Base(torch.nn.Module):
@@ -52,7 +53,7 @@ class Base(torch.nn.Module):
         if isinstance(values, torch.Tensor):
             return values
         else:
-            return torch.tensor(values).float()
+            return torch.tensor(np.array(values)).float()
 
     def train(self, mode):
         """
@@ -93,12 +94,18 @@ class Base(torch.nn.Module):
         with torch.no_grad():
             self.in_features += len(centers)
             self.reshape_parameters()
-            self.centers = torch.nn.Parameter(torch.cat([self.centers, torch.tensor(centers)]))
-            self.widths = torch.cat([self.widths, torch.tensor(widths)])
+            if not isinstance(centers, torch.Tensor):
+                centers = torch.tensor(np.array(centers))
+            self.centers = torch.nn.Parameter(torch.cat([self.centers, centers]))
+            if not isinstance(widths, torch.Tensor):
+                widths = torch.tensor(widths)
+            self.widths = torch.cat([self.widths, widths])
             if supports is None:
                 self.supports = torch.cat([self.supports, torch.ones(len(centers))])
             else:
-                self.supports = torch.cat([self.supports, torch.tensor(supports)])
+                if not isinstance(supports, torch.Tensor):
+                    supports = torch.tensor(supports)
+                self.supports = torch.cat([self.supports, supports])
         self.log_widths()  # update the stored log widths
         self.sort()
 
