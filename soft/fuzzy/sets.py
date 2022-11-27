@@ -93,23 +93,12 @@ class Base(torch.nn.Module):
         with torch.no_grad():
             self.in_features += len(centers)
             self.reshape_parameters()
-            try:
-                self.centers = torch.nn.Parameter(torch.cat([self.centers, torch.tensor(centers).reshape(1)]))
-            except RuntimeError:  # RuntimeError: shape '[1]' is invalid for input of size 4
-                self.centers = torch.nn.Parameter(torch.cat([self.centers, torch.tensor(centers)]))
-
-            try:
-                self.widths = torch.cat([self.widths, torch.tensor(widths).reshape(1)])
-            except ValueError:
-                print((self.widths, widths))
-                self.widths = torch.cat([self.widths, torch.tensor(widths)])
+            self.centers = torch.nn.Parameter(torch.cat([self.centers, torch.tensor(centers)]))
+            self.widths = torch.cat([self.widths, torch.tensor(widths)])
             if supports is None:
                 self.supports = torch.cat([self.supports, torch.ones(len(centers))])
             else:
-                try:
-                    self.supports = torch.cat([self.supports, torch.tensor(supports).reshape(1)])
-                except RuntimeError:
-                    self.supports = torch.cat([self.supports, torch.tensor(supports)])
+                self.supports = torch.cat([self.supports, torch.tensor(supports)])
         self.log_widths()  # update the stored log widths
         self.sort()
 
