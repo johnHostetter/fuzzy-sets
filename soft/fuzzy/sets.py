@@ -138,11 +138,12 @@ class Base(torch.nn.Module):
         Returns:
             (int) column index of the 'don't care' membership function.
         """
-        size = np.array(self.centers.shape)
-        self.hstack(centers=torch.tensor([torch.nan] * size[0]).unsqueeze(dim=1),
-                    widths=torch.tensor([torch.nan] * size[0]).unsqueeze(dim=1),
-                    supports=torch.tensor([torch.nan]))
-        self.special_idx = size[1]
+        if self.special_idx is None:
+            size = np.array(self.centers.shape)
+            self.hstack(centers=torch.tensor([torch.nan] * size[0]).unsqueeze(dim=1),
+                        widths=torch.tensor([torch.nan] * size[0]).unsqueeze(dim=1),
+                        supports=torch.tensor([torch.nan]))
+            self.special_idx = size[1]
         return self.special_idx
 
     def increase_support_of(self, index):
