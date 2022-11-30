@@ -21,13 +21,11 @@ class Base(torch.nn.Module):
         if widths is None:  # we apply the logarithm to the widths, so later, if we train them, and they become
             # nonzero, with an exponential function they are still positive
             # in other words, since gradient descent may make the widths negative, we nullify that effect
-            with torch.no_grad():
-                self.widths = torch.rand(self.in_features)
+            self.widths = torch.rand(self.in_features)
         else:
             # we assume the widths are given to us are within (0, 1)
-            with torch.no_grad():
-                widths = self.convert_to_tensor(widths)
-                self.widths = torch.abs(widths)
+            widths = self.convert_to_tensor(widths)
+            self.widths = torch.nn.parameter.Parameter(torch.abs(widths))
 
         self.log_widths()  # update the stored log widths
 
@@ -87,7 +85,7 @@ class Base(torch.nn.Module):
         if self.centers.nelement() == 1:
             self.centers = torch.nn.Parameter(self.centers.reshape(1))
         if self.widths.nelement() == 1:
-            self.widths = self.widths.reshape(1)
+            self.widths = torch.nn.Parameter(self.widths.reshape(1))
         if self.supports.nelement() == 1:
             self.supports = self.supports.reshape(1)
         self.log_widths()  # update the stored log widths
@@ -102,7 +100,7 @@ class Base(torch.nn.Module):
             self.centers = torch.nn.Parameter(torch.cat([self.centers, centers]))
             if not isinstance(widths, torch.Tensor):
                 widths = torch.tensor(widths)
-            self.widths = torch.cat([self.widths, widths])
+            self.widths = torch.nn.Parameter(torch.cat([self.widths, widths]))
             if supports is None:
                 self.supports = torch.cat([self.supports, torch.ones(len(centers))])
             else:
@@ -121,7 +119,7 @@ class Base(torch.nn.Module):
             self.centers = torch.nn.Parameter(torch.hstack([self.centers, centers]))
             if not isinstance(widths, torch.Tensor):
                 widths = torch.tensor(widths)
-            self.widths = torch.hstack([self.widths, widths])
+            self.widths = torch.nn.Parameter(torch.hstack([self.widths, widths]))
             if supports is None:
                 self.supports = torch.hstack([self.supports, torch.ones(len(centers))])
             else:
@@ -144,6 +142,8 @@ class Base(torch.nn.Module):
                         widths=torch.tensor([torch.nan] * size[0]).unsqueeze(dim=1),
                         supports=torch.tensor([torch.nan]))
             self.special_idx = size[1]
+            self.log_widths()  # update the stored log widths
+            self.sort()
         return self.special_idx
 
     def increase_support_of(self, index):
@@ -212,14 +212,11 @@ class Gaussian(Base):
         """
         # https://stackoverflow.com/questions/65022269/how-to-use-a-learnable-parameter-in-pytorch-constrained-between-0-and-1
 
-        log_results = torch.exp(-1.0 * (torch.pow(x - self.centers, 2) / torch.pow(torch.exp(self._log_widths), 2)))
-        no_log_results = torch.exp(-1.0 * (torch.pow(x - self.centers, 2) / torch.pow(self.widths, 2)))
-        # if not torch.allclose(log_results, no_log_results, rtol=1e-01, atol=1e-01):
-        #     print('with logs: {}'.format(log_results))
-        #     print('w/o logs: {}'.format(no_log_results))
-        #     print('stop')
-        #     quit()
-        return no_log_results
+        log_results = torch.exp(
+            -1.0 * (torch.pow(x.unsqueeze(dim=-1) - self.centers, 2) / torch.pow(torch.exp(self._log_widths), 2)))
+        # no_log_results = torch.exp(
+        #     -1.0 * (torch.pow(x.unsqueeze(dim=-1) - self.centers, 2) / torch.pow(self.widths, 2)))
+        return log_results
         # return torch.exp(-1.0 * (torch.pow(x - self.centers, 2) / torch.pow(torch.exp(self._log_widths), 2)))
 
 
@@ -259,4 +256,5 @@ class Triangular(Base):
         """
         # https://stackoverflow.com/questions/65022269/how-to-use-a-learnable-parameter-in-pytorch-constrained-between-0-and-1
 
-        return torch.max(1.0 - (1.0 / torch.exp(self._log_widths)) * torch.abs(x - self.centers), torch.tensor(0.0))
+        return torch.max(1.0 - (1.0 / torch.exp(self._log_widths)) * torch.abs(x.unsqueeze(dim=-1) - self.centers),
+                         torch.tensor(0.0))
