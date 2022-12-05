@@ -212,8 +212,11 @@ class Gaussian(Base):
         """
         # https://stackoverflow.com/questions/65022269/how-to-use-a-learnable-parameter-in-pytorch-constrained-between-0-and-1
 
-        log_results = torch.exp(
-            -1.0 * (torch.pow(x.unsqueeze(dim=-1) - self.centers, 2) / torch.pow(torch.exp(self._log_widths), 2)))
+        try:
+            log_results = torch.exp(
+                -1.0 * (torch.pow(x.unsqueeze(dim=-1) - self.centers, 2) / torch.pow(torch.exp(self._log_widths), 2)))
+        except Exception:
+            print('hang on')
         # no_log_results = torch.exp(
         #     -1.0 * (torch.pow(x.unsqueeze(dim=-1) - self.centers, 2) / torch.pow(self.widths, 2)))
         return log_results
