@@ -1,15 +1,11 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Mar  1 17:49:59 2020
-
-@author: jhost
-"""
 import sympy
-from fuzzyset import FuzzySet
+
 from pynverse import inversefunc
+from soft.fuzzy.sets import DiscreteFuzzySet
 from sympy import lambdify, Symbol, Interval, Union
 
-class SpecialFuzzySet(FuzzySet):
+
+class SpecialFuzzySet(DiscreteFuzzySet):
     """ 
     The special fuzzy set membership function for a given element x in the universe of 
     discourse X, is defined as the alpha value multipled by the element x's degree of 
@@ -17,7 +13,7 @@ class SpecialFuzzySet(FuzzySet):
     
     Attributes
     ----------
-    fuzzyset : 'OrdinaryFuzzySet'
+    fuzzyset : 'OrdinaryDiscreteFuzzySet'
         An ordinary fuzzy set to retrieve the special fuzzy set given the alpha.
     alpha : 'float'
         The alpha value that elements' membership degree must exceed or be equal to.
@@ -35,12 +31,12 @@ class SpecialFuzzySet(FuzzySet):
     height()
         Calculates the height of the special fuzzy set.
     """
-    
+
     def __init__(self, fuzzyset, alpha, name=None):
         """
         Parameters
         ----------
-            fuzzyset : 'OrdinaryFuzzySet'
+            fuzzyset : 'OrdinaryDiscreteFuzzySet'
                 An ordinary fuzzy set to retrieve the special fuzzy set given the alpha.
             alpha : 'float'
                 The alpha value that elements' membership degree must exceed or be equal to.
@@ -56,6 +52,7 @@ class SpecialFuzzySet(FuzzySet):
         self.formulas = [(alpha, interval)]
         self.alpha = alpha
         self.name = name
+
     def fetch(self, x):
         """ 
         Fetch the corresponding formula for the provided x value where x is a(n) int/float.
@@ -72,9 +69,10 @@ class SpecialFuzzySet(FuzzySet):
             None if a formula for the element x could not be found.
         """
         for formula in self.formulas:
-            if formula[1].contains(x): # check the formula's interval to see if it contains x
+            if formula[1].contains(x):  # check the formula's interval to see if it contains x
                 return formula
         return None
+
     def degree(self, x):
         """
         Calculates the degree of membership for the provided x value where x is a(n) int/float.
@@ -90,7 +88,7 @@ class SpecialFuzzySet(FuzzySet):
             The degree of membership for element x.
         """
         result = self.fetch(x)
-        if result != None:
+        if result is not None:
             formula = result[0]
         else:
             return 0
@@ -98,7 +96,8 @@ class SpecialFuzzySet(FuzzySet):
             y = float(formula.subs(Symbol('x'), x))
         except AttributeError:
             y = formula
-        return y  
+        return y
+
     def height(self):
         """
         Calculates the height of the special fuzzy set.
@@ -110,7 +109,8 @@ class SpecialFuzzySet(FuzzySet):
         """
         return self.alpha
 
-class AlphaCut(FuzzySet):
+
+class AlphaCut(DiscreteFuzzySet):
     """ 
     The alpha cut of a fuzzy set yields a crisp set.
     
@@ -134,7 +134,7 @@ class AlphaCut(FuzzySet):
     degree(x)
         Calculates the degree of membership for the provided x value where x is a(n) int/float.
     """
-    
+
     def __init__(self, fuzzyset, alpha, name=None):
         """
         Parameters
@@ -161,7 +161,7 @@ class AlphaCut(FuzzySet):
                     y = formula[0].subs(Symbol('x'), x - (1e-6))
                     if y >= alpha:
                         # then all values less than or equal to x are valid
-                        if formula[1].left_open:    
+                        if formula[1].left_open:
                             interval = Interval.Lopen(formula[1].inf, x)
                         else:
                             interval = Interval(formula[1].inf, x)
@@ -179,6 +179,7 @@ class AlphaCut(FuzzySet):
                 if formula[0] >= alpha:
                     formulas.append(formula)
         self.formulas = formulas
+
     def fetch(self, x):
         """ 
         Fetch the corresponding formula for the provided x value where x is a(n) int/float.
@@ -195,9 +196,10 @@ class AlphaCut(FuzzySet):
             None if a formula for the element x could not be found.
         """
         for formula in self.formulas:
-            if formula[1].contains(x): # check the formula's interval to see if it contains x
+            if formula[1].contains(x):  # check the formula's interval to see if it contains x
                 return formula
         return None
+
     def degree(self, x):
         """
         Calculates the degree of membership for the provided x value where x is a(n) int/float.
@@ -213,7 +215,7 @@ class AlphaCut(FuzzySet):
             The degree of membership for element x.
         """
         result = self.fetch(x)
-        if result != None:
+        if result is not None:
             formula = result[0]
         else:
             return 0
@@ -222,7 +224,8 @@ class AlphaCut(FuzzySet):
         except AttributeError:
             y = formula
         return y
-        
+
+
 def StandardComplement(fuzzySet):
     """
     Obtains the standard complement of a fuzzy set as defined by Lotfi A. Zadeh.
@@ -231,25 +234,26 @@ def StandardComplement(fuzzySet):
     
     Parameters
     ----------
-    fuzzySet : 'OrdinaryFuzzySet'
+    fuzzySet : 'OrdinaryDiscreteFuzzySet'
     
     Returns
     -------
     success : 'bool'
     """
-    
-    if isinstance(fuzzySet, FuzzySet):
+
+    if isinstance(fuzzySet, DiscreteFuzzySet):
         formulas = []
         for formula in fuzzySet.formulas:
             formula = list(formula)
-            formula[0] = 1- formula[0]
+            formula[0] = 1 - formula[0]
             formula = tuple(formula)
             formulas.append(formula)
         fuzzySet.formulas = formulas
         return True
     return False
 
-class StandardUnion(FuzzySet):
+
+class StandardUnion(DiscreteFuzzySet):
     """
     A standard union of one or more ordinary fuzzy sets.
     
@@ -269,7 +273,7 @@ class StandardUnion(FuzzySet):
     graph(lower=0, upper=100, samples=100)
         Graphs the fuzzy set in the universe of elements.
     """
-    
+
     def __init__(self, fuzzysets, name=None):
         """        
         Parameters
@@ -281,9 +285,10 @@ class StandardUnion(FuzzySet):
             This feature is useful when visualizing the fuzzy set, and its interaction with
             other fuzzy fets in the same space.
         """
-        FuzzySet.__init__(self)
+        DiscreteFuzzySet.__init__(self)
         self.fuzzysets = fuzzysets
         self.name = name
+
     def degree(self, x):
         """
         Calculates the degree of membership for the provided x value where x is a(n) int/float.
@@ -302,8 +307,9 @@ class StandardUnion(FuzzySet):
         for fuzzyset in self.fuzzysets:
             degrees.append(fuzzyset.degree(x))
         return max(degrees)
-        
-class StandardIntersection(FuzzySet):
+
+
+class StandardIntersection(DiscreteFuzzySet):
     """
     A standard intersection of one or more ordinary fuzzy sets.
     
@@ -323,7 +329,7 @@ class StandardIntersection(FuzzySet):
     graph(lower=0, upper=100, samples=100)
         Graphs the fuzzy set in the universe of elements.
     """
-    
+
     def __init__(self, fuzzysets, name=None):
         """        
         Parameters
@@ -335,9 +341,10 @@ class StandardIntersection(FuzzySet):
             This feature is useful when visualizing the fuzzy set, and its interaction with
             other fuzzy fets in the same space.
         """
-        FuzzySet.__init__(self)
+        DiscreteFuzzySet.__init__(self)
         self.fuzzysets = fuzzysets
         self.name = name
+
     def degree(self, x):
         """
         Calculates the degree of membership for the provided x value where x is a(n) int/float.
