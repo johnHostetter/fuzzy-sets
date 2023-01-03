@@ -1,5 +1,7 @@
 import torch
 
+from soft.fuzzy.sets import DiscreteFuzzySet
+
 
 class AlgebraicProduct(torch.nn.Module):
     """
@@ -43,3 +45,60 @@ class AlgebraicProduct(torch.nn.Module):
         """
         self.importance = torch.nn.parameter.Parameter(torch.abs(self.importance))  # importance can only be [0, 1]
         return torch.prod(torch.mul(torch.tensor(x), self.importance))
+
+
+class StandardIntersection(DiscreteFuzzySet):
+    """
+    A standard intersection of one or more ordinary fuzzy sets.
+
+    Attributes
+    ----------
+    fuzzySets : 'list'
+        A list of elements each of type OrdinaryFuzzySet.
+    name : 'str'/'None'
+        Default value is None. Allows the user to specify the name of the fuzzy set.
+        This feature is useful when visualizing the fuzzy set, and its interaction with
+        other fuzzy fets in the same space.
+
+    Methods
+    -------
+    degree(x)
+        Calculates the degree of membership for the provided x value where x is a(n) int/float.
+    graph(lower=0, upper=100, samples=100)
+        Graphs the fuzzy set in the universe of elements.
+    """
+
+    def __init__(self, fuzzysets, name=None):
+        """
+        Parameters
+        ----------
+        fuzzySets : 'list'
+            A list of elements each of type OrdinaryFuzzySet.
+        name : 'str'/'None'
+            Default value is None. Allows the user to specify the name of the fuzzy set.
+            This feature is useful when visualizing the fuzzy set, and its interaction with
+            other fuzzy fets in the same space.
+        """
+        DiscreteFuzzySet.__init__(self)
+        self.fuzzysets = fuzzysets
+        self.name = name
+
+    def degree(self, x):
+        """
+        Calculates the degree of membership for the provided x value where x is a(n) int/float.
+
+        Parameters
+        ----------
+        x : 'float'
+            The parameter x is the element from the universe of discourse X.
+
+        Returns
+        -------
+        y : 'float'
+            The degree of membership for element x.
+        """
+        degrees = []
+        for fuzzyset in self.fuzzysets:
+            degrees.append(fuzzyset.degree(x))
+        return min(degrees)
+    

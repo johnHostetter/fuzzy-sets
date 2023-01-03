@@ -313,7 +313,6 @@ class DiscreteFuzzySet:
         else:
             plt.title('Unnamed Fuzzy Set')
 
-        plt.axes()
         plt.xlim([lower, upper])
         plt.ylim([0, 1.1])
         plt.xlabel('Elements of Universe')
@@ -525,7 +524,7 @@ class FuzzyVariable(DiscreteFuzzySet):
             Default value is 100. Specifies the supremum x value for the graph.
         samples : 'int', optional
             Default value is 100. Specifies the number of x values to test in the domain
-            to approximate the grpah. A higher sample value will yield a higher resolution
+            to approximate the graph. A higher sample value will yield a higher resolution
             of the graph, but large values will lead to performance issues.
         """
         for fuzzySet in self.fuzzySets:
@@ -540,7 +539,7 @@ class FuzzyVariable(DiscreteFuzzySet):
         else:
             plt.title('Unnamed Fuzzy Variable')
 
-        plt.axes()
+        # plt.axes()
         plt.xlim([lower, upper])
         plt.ylim([0, 1.1])
         plt.xlabel('Elements of Universe')
