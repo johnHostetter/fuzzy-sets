@@ -6,16 +6,6 @@ from soft.fuzzy.sets import DiscreteFuzzySet
 class AlgebraicProduct(torch.nn.Module):
     """
     Implementation of the Algebraic Product t-norm (Fuzzy AND).
-    Shape:
-        - Input: (N, *) where * means, any number of additional
-          dimensions
-        - Output: (N, *), same shape as the input
-    Parameters:
-        - importance: trainable parameter
-    Examples:
-        # >>> a1 = AlgebraicProductTNorm(4)  # 4 inputs from linguistic terms
-        # >>> x = torch.FloatTensor(0, 4).uniform(0, 1) #
-        # >>> x = a1(x)
     """
 
     def __init__(self, in_features, importance=None):
@@ -50,22 +40,6 @@ class AlgebraicProduct(torch.nn.Module):
 class StandardIntersection(DiscreteFuzzySet):
     """
     A standard intersection of one or more ordinary fuzzy sets.
-
-    Attributes
-    ----------
-    fuzzySets : 'list'
-        A list of elements each of type OrdinaryFuzzySet.
-    name : 'str'/'None'
-        Default value is None. Allows the user to specify the name of the fuzzy set.
-        This feature is useful when visualizing the fuzzy set, and its interaction with
-        other fuzzy fets in the same space.
-
-    Methods
-    -------
-    degree(x)
-        Calculates the degree of membership for the provided x value where x is a(n) int/float.
-    graph(lower=0, upper=100, samples=100)
-        Graphs the fuzzy set in the universe of elements.
     """
 
     def __init__(self, fuzzysets, name=None):

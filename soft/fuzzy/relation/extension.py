@@ -10,26 +10,6 @@ class SpecialFuzzySet(DiscreteFuzzySet):
     The special fuzzy set membership function for a given element x in the universe of 
     discourse X, is defined as the alpha value multipled by the element x's degree of 
     membership within the fuzzy set's alpha cut.
-    
-    Attributes
-    ----------
-    fuzzyset : 'OrdinaryDiscreteFuzzySet'
-        An ordinary fuzzy set to retrieve the special fuzzy set given the alpha.
-    alpha : 'float'
-        The alpha value that elements' membership degree must exceed or be equal to.
-    name : 'str'/'None'
-        Default value is None. Allows the user to specify the name of the fuzzy set.
-        This feature is useful when visualizing the fuzzy set, and its interaction with
-        other fuzzy sets in the same space.
-        
-    Methods
-    -------
-    fetch(x)
-        Fetch the corresponding formula for the provided x value where x is a(n) int/float.
-    degree(x)
-        Calculates the degree of membership for the provided x value where x is a(n) int/float.
-    height()
-        Calculates the height of the special fuzzy set.
     """
 
     def __init__(self, fuzzyset, alpha, name=None):
@@ -113,26 +93,6 @@ class SpecialFuzzySet(DiscreteFuzzySet):
 class AlphaCut(DiscreteFuzzySet):
     """ 
     The alpha cut of a fuzzy set yields a crisp set.
-    
-    Attributes
-    ----------
-    formulas : 'list'
-        A list of 2-tuples. The first element in the tuple at index 0 is the formula 
-        equal to f(x) and the second element in the tuple at index 1 is the Interval 
-        where the formula in the tuple is valid.
-    alpha : 'float'
-        The alpha value that elements' membership degree must exceed or be equal to.
-    name : 'str'/'None'
-        Default value is None. Allows the user to specify the name of the fuzzy set.
-        This feature is useful when visualizing the fuzzy set, and its interaction with
-        other fuzzy sets in the same space.
-    
-    Methods
-    -------
-    fetch(x)
-        Fetch the corresponding formula for the provided x value where x is a(n) int/float.
-    degree(x)
-        Calculates the degree of membership for the provided x value where x is a(n) int/float.
     """
 
     def __init__(self, fuzzyset, alpha, name=None):

@@ -4,22 +4,6 @@ from soft.fuzzy.sets import DiscreteFuzzySet
 class StandardUnion(DiscreteFuzzySet):
     """
     A standard union of one or more ordinary fuzzy sets.
-
-    Attributes
-    ----------
-    fuzzySets : 'list'
-        A list of elements each of type OrdinaryFuzzySet.
-    name : 'str'/'None'
-        Default value is None. Allows the user to specify the name of the fuzzy set.
-        This feature is useful when visualizing the fuzzy set, and its interaction with
-        other fuzzy fets in the same space.
-
-    Methods
-    -------
-    degree(x)
-        Calculates the degree of membership for the provided x value where x is a(n) int/float.
-    graph(lower=0, upper=100, samples=100)
-        Graphs the fuzzy set in the universe of elements.
     """
 
     def __init__(self, fuzzysets, name=None):

@@ -174,17 +174,6 @@ class Base(torch.nn.Module):
 class Gaussian(Base):
     """
     Implementation of the Gaussian membership function.
-    Shape:
-        - Input: (N, *) where * means, any number of additional
-          dimensions
-        - Output: (N, *), same shape as the input
-    Parameters:
-        - centers: trainable parameter
-        - sigmas: trainable parameter
-    Examples:
-        # >>> a1 = gaussian(256)
-        # >>> x = torch.randn(256)
-        # >>> x = a1(x)
     """
 
     def __init__(self, in_features, centers=None, widths=None, supports=None, labels=None,
@@ -226,17 +215,6 @@ class Gaussian(Base):
 class Triangular(Base):
     """
     Implementation of the Triangular membership function.
-    Shape:
-        - Input: (N, *) where * means, any number of additional
-          dimensions
-        - Output: (N, *), same shape as the input
-    Parameters:
-        - centers: trainable parameter
-        - widths: trainable parameter
-    Examples:
-        # >>> a1 = triangular(256)
-        # >>> x = torch.randn(256)
-        # >>> x = a1(x)
     """
 
     def __init__(self, in_features, centers=None, widths=None, supports=None, labels=None,
@@ -263,11 +241,6 @@ class Triangular(Base):
                          torch.tensor(0.0))
 
 
-"""
-The following are the discrete implementations of fuzzy sets.
-"""
-
-
 # https://docs.sympy.org/latest/modules/integrals/integrals.html
 # https://docs.sympy.org/latest/modules/sets.html
 # https://numpydoc.readthedocs.io/en/latest/example.html
@@ -276,18 +249,7 @@ The following are the discrete implementations of fuzzy sets.
 class DiscreteFuzzySet:
     """
     A parent class for all fuzzy sets to inherit. Allows the user to visualize the fuzzy set.
-
-    Methods
-    -------
-    graph(lower=0, upper=100, samples=100)
-        Graphs the fuzzy set in the universe of elements.
     """
-
-    def __init__(self):
-        """
-        The empty constructor.
-        """
-        pass
 
     def graph(self, lower=0, upper=100, samples=100):
         """
@@ -301,7 +263,7 @@ class DiscreteFuzzySet:
             Default value is 100. Specifies the supremum x value for the graph.
         samples : 'int', optional
             Default value is 100. Specifies the number of x values to test in the domain
-            to approximate the grpah. A higher sample value will yield a higher resolution
+            to approximate the graph. A higher sample value will yield a higher resolution
             of the graph, but large values will lead to performance issues.
         """
         x_list = np.linspace(lower, upper, samples)
@@ -325,44 +287,6 @@ class DiscreteFuzzySet:
 class OrdinaryDiscreteFuzzySet(DiscreteFuzzySet):
     """
     An ordinary fuzzy set that is of type 1 and level 1.
-
-    Attributes
-    ----------
-    formulas : 'list'
-        A list of 2-tuples. The first element in the tuple at index 0 is the formula
-        equal to f(x) and the second element in the tuple at index 1 is the Interval
-        where the formula in the tuple is valid.
-
-        Warning: Formulas should be organized in the list such that the formulas and
-        their corresponding intervals are specified from the smallest possible x values
-        to the largest possible x values.
-
-        The list of formulas provided constitutes the piece-wise function of the
-        fuzzy set's membership function.
-    name : 'str'/'None'
-        Default value is None. Allows the user to specify the name of the fuzzy set.
-        This feature is useful when visualizing the fuzzy set, and its interaction with
-        other fuzzy sets in the same space.
-
-    Methods
-    -------
-    fetch(x)
-        Calculates the corresponding formula for the provided x value where x is a(n) int/float.
-    degree(x)
-        Calculates the degree of membership for the provided x value where x is a(n) int/float.
-    height()
-        Calculates the height of the fuzzy set.
-    graph(lower=0, upper=100, samples=100)
-        Graphs the fuzzy set in the universe of elements.
-
-    Examples
-    --------
-        >>> formulas = []
-        >>> x = Symbol('x')
-        >>> formulas.append((1, Interval.Lopen(-oo,20)))
-        >>> formulas.append(((35-x)/15,Interval.open(20,35)))
-        >>> formulas.append((0, Interval.Ropen(35,oo)))
-        >>> OrdinaryFuzzySet(formulas, 'A1')
     """
 
     def __init__(self, formulas, name=None):
@@ -460,22 +384,6 @@ class OrdinaryDiscreteFuzzySet(DiscreteFuzzySet):
 class FuzzyVariable(DiscreteFuzzySet):
     """
     A fuzzy variable, or linguistic variable, that contains fuzzy sets.
-
-    Attributes
-    ----------
-    fuzzySets : 'list'
-        A list of elements each of type OrdinaryFuzzySet.
-    name : 'str'/'None'
-        Default value is None. Allows the user to specify the name of the fuzzy set.
-        This feature is useful when visualizing the fuzzy set, and its interaction with
-        other fuzzy fets in the same space.
-
-    Methods
-    -------
-    degree(x)
-        Calculates the degree of membership for the provided x value where x is a(n) int/float.
-    graph(lower=0, upper=100, samples=100)
-        Graphs the fuzzy set in the universe of elements.
     """
 
     def __init__(self, fuzzySets, name=None):
@@ -539,7 +447,6 @@ class FuzzyVariable(DiscreteFuzzySet):
         else:
             plt.title('Unnamed Fuzzy Variable')
 
-        # plt.axes()
         plt.xlim([lower, upper])
         plt.ylim([0, 1.1])
         plt.xlabel('Elements of Universe')
