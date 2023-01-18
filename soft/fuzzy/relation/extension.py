@@ -1,8 +1,8 @@
 import sympy
 
 from pynverse import inversefunc
-from soft.fuzzy.sets import DiscreteFuzzySet
 from sympy import lambdify, Symbol, Interval, Union
+from soft.fuzzy.sets.discrete import DiscreteFuzzySet
 
 
 class SpecialFuzzySet(DiscreteFuzzySet):
