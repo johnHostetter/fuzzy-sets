@@ -1,6 +1,6 @@
 import torch
 
-from soft.fuzzy.sets import DiscreteFuzzySet
+from soft.fuzzy.sets.discrete import DiscreteFuzzySet
 
 
 class AlgebraicProduct(torch.nn.Module):

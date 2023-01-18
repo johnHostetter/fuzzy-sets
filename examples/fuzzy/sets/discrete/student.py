@@ -1,6 +1,6 @@
 from soft.fuzzy.relation.tnorm import StandardIntersection
 from soft.fuzzy.relation.extension import AlphaCut, SpecialFuzzySet
-from soft.fuzzy.sets import OrdinaryDiscreteFuzzySet, FuzzyVariable
+from soft.fuzzy.sets.discrete import OrdinaryDiscreteFuzzySet, FuzzyVariable
 
 from sympy import Symbol, Interval, oo  # oo is infinity
 

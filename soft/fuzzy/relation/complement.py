@@ -1,4 +1,4 @@
-from soft.fuzzy.sets import DiscreteFuzzySet
+from soft.fuzzy.sets.discrete import DiscreteFuzzySet
 
 
 def StandardComplement(fuzzySet):
