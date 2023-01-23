@@ -19,6 +19,7 @@ class AlgebraicProduct(torch.nn.Module):
         """
         super(AlgebraicProduct, self).__init__()
         self.in_features = in_features
+        self.name = 'algebraic product'
 
         # initialize antecedent importance
         if importance is None:
@@ -27,6 +28,14 @@ class AlgebraicProduct(torch.nn.Module):
         else:
             self.importance = torch.nn.parameter.Parameter(torch.abs(torch.tensor(importance)))  # importance can only be [0, 1]
             self.importance.requires_grad = True
+
+    @staticmethod
+    def name():
+        return 'algebraic product'
+
+    @staticmethod
+    def type():
+        return 't-norm'
 
     def forward(self, x):
         """
