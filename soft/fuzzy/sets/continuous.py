@@ -116,23 +116,6 @@ class ContinuousFuzzySet(torch.nn.Module):
         self.log_widths()  # update the stored log widths
         self.sort()
 
-    def make_dont_care_membership(self):
-        """
-        Create a 'don't care' membership function for each linguistic variable. Useful for feature selection/reduction.
-
-        Returns:
-            (int) column index of the 'don't care' membership function.
-        """
-        if self.special_idx is None:
-            size = np.array(self.centers.shape)
-            self.hstack(centers=torch.tensor([torch.nan] * size[0]).unsqueeze(dim=1),
-                        widths=torch.tensor([torch.nan] * size[0]).unsqueeze(dim=1),
-                        supports=torch.tensor([torch.nan]))
-            self.special_idx = size[1]
-            self.log_widths()  # update the stored log widths
-            self.sort()
-        return self.special_idx
-
     def increase_support_of(self, index):
         """
         The 'index' refers to the index of a Gaussian fuzzy set on this dimension.
