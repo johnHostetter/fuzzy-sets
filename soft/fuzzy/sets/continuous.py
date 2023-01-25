@@ -3,11 +3,10 @@ import numpy as np
 
 
 class ContinuousFuzzySet(torch.nn.Module):
-    def __init__(self, in_features, centers=None, widths=None, supports=None, labels=None, sort_by='centers'):
+    def __init__(self, in_features, centers=None, widths=None, supports=None, labels=None):
         super(ContinuousFuzzySet, self).__init__()
         self.in_features = in_features
         self._log_widths = None
-        self.sort_by = sort_by
 
         # initialize centers
         if centers is None:
@@ -39,9 +38,6 @@ class ContinuousFuzzySet(torch.nn.Module):
         self.special_idx = None
 
         self.labels = labels
-        # self.trainable = self.train(mode=trainable)
-        if sort_by == 'centers':
-            self.sort()
 
     def log_widths(self):
         with torch.no_grad():
@@ -81,7 +77,6 @@ class ContinuousFuzzySet(torch.nn.Module):
                     supports = torch.tensor(supports)
                 self.supports = torch.cat([self.supports, supports])
         self.log_widths()  # update the stored log widths
-        self.sort()
 
     def forward(self):
         raise NotImplementedError('The Base Fuzzy Set has no membership function defined.')
@@ -92,7 +87,7 @@ class Gaussian(ContinuousFuzzySet):
     Implementation of the Gaussian membership function, written in PyTorch.
     """
 
-    def __init__(self, in_features, centers=None, widths=None, supports=None, labels=None, sort_by='centers'):
+    def __init__(self, in_features, centers=None, widths=None, supports=None, labels=None):
         """
         Initialization.
         INPUT:
@@ -102,7 +97,7 @@ class Gaussian(ContinuousFuzzySet):
             centers and sigmas are initialized randomly by default,
             but sigmas must be > 0
         """
-        super(Gaussian, self).__init__(in_features, centers, widths, supports, labels, sort_by)
+        super(Gaussian, self).__init__(in_features, centers, widths, supports, labels)
 
     @property
     def sigmas(self):
@@ -134,7 +129,7 @@ class Triangular(ContinuousFuzzySet):
     Implementation of the Triangular membership function, written in PyTorch.
     """
 
-    def __init__(self, in_features, centers=None, widths=None, supports=None, labels=None, sort_by='centers'):
+    def __init__(self, in_features, centers=None, widths=None, supports=None, labels=None):
         """
         Initialization.
         INPUT:
@@ -144,7 +139,7 @@ class Triangular(ContinuousFuzzySet):
             centers and widths are initialized randomly by default,
             but widths must be > 0
         """
-        super(Triangular, self).__init__(in_features, centers, widths, supports, labels, sort_by)
+        super(Triangular, self).__init__(in_features, centers, widths, supports, labels)
 
     def forward(self, observations):
         """
