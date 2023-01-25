@@ -97,25 +97,6 @@ class ContinuousFuzzySet(torch.nn.Module):
         self.log_widths()  # update the stored log widths
         self.sort()
 
-    def hstack(self, centers, widths, supports=None):
-        with torch.no_grad():
-            self.in_features += len(centers)
-            self.reshape_parameters()
-            if not isinstance(centers, torch.Tensor):
-                centers = torch.tensor(np.array(centers))
-            self.centers = torch.nn.Parameter(torch.hstack([self.centers, centers]))
-            if not isinstance(widths, torch.Tensor):
-                widths = torch.tensor(widths)
-            self.widths = torch.nn.Parameter(torch.hstack([self.widths, widths]))
-            if supports is None:
-                self.supports = torch.hstack([self.supports, torch.ones(len(centers))])
-            else:
-                if not isinstance(supports, torch.Tensor):
-                    supports = torch.tensor(supports)
-                self.supports = torch.hstack([self.supports, supports])
-        self.log_widths()  # update the stored log widths
-        self.sort()
-
     def forward(self):
         raise NotImplementedError('The Base Fuzzy Set has no membership function defined.')
 
