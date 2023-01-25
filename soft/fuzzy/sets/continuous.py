@@ -3,10 +3,11 @@ import numpy as np
 
 
 class ContinuousFuzzySet(torch.nn.Module):
-    def __init__(self, in_features, centers=None, widths=None, supports=None, labels=None):
+    def __init__(self, in_features, centers=None, widths=None, labels=None):
         super(ContinuousFuzzySet, self).__init__()
         self.in_features = in_features
         self._log_widths = None
+        self.labels = labels
 
         # initialize centers
         if centers is None:
@@ -27,18 +28,6 @@ class ContinuousFuzzySet(torch.nn.Module):
 
         self.log_widths()  # update the stored log widths
 
-        # initialize support
-        if supports is None:
-            self.supports = torch.ones(self.in_features)
-        else:
-            supports = self.convert_to_tensor(supports)
-            self.supports = torch.abs(supports)
-
-        # used for feature selection/reduction
-        self.special_idx = None
-
-        self.labels = labels
-
     def log_widths(self):
         with torch.no_grad():
             self._log_widths = torch.nn.parameter.Parameter(torch.log(self.widths))
@@ -56,11 +45,9 @@ class ContinuousFuzzySet(torch.nn.Module):
             self.centers = torch.nn.Parameter(self.centers.reshape(1))
         if self.widths.nelement() == 1:
             self.widths = torch.nn.Parameter(self.widths.reshape(1))
-        if self.supports.nelement() == 1:
-            self.supports = self.supports.reshape(1)
         self.log_widths()  # update the stored log widths
 
-    def extend(self, centers, widths, supports=None):
+    def extend(self, centers, widths):
         with torch.no_grad():
             self.in_features += len(centers)
             self.reshape_parameters()
@@ -70,12 +57,6 @@ class ContinuousFuzzySet(torch.nn.Module):
             if not isinstance(widths, torch.Tensor):
                 widths = torch.tensor(widths)
             self.widths = torch.nn.Parameter(torch.cat([self.widths, widths]))
-            if supports is None:
-                self.supports = torch.cat([self.supports, torch.ones(len(centers))])
-            else:
-                if not isinstance(supports, torch.Tensor):
-                    supports = torch.tensor(supports)
-                self.supports = torch.cat([self.supports, supports])
         self.log_widths()  # update the stored log widths
 
     def forward(self):
@@ -87,7 +68,7 @@ class Gaussian(ContinuousFuzzySet):
     Implementation of the Gaussian membership function, written in PyTorch.
     """
 
-    def __init__(self, in_features, centers=None, widths=None, supports=None, labels=None):
+    def __init__(self, in_features, centers=None, widths=None, labels=None):
         """
         Initialization.
         INPUT:
@@ -97,7 +78,7 @@ class Gaussian(ContinuousFuzzySet):
             centers and sigmas are initialized randomly by default,
             but sigmas must be > 0
         """
-        super(Gaussian, self).__init__(in_features, centers, widths, supports, labels)
+        super(Gaussian, self).__init__(in_features, centers, widths, labels)
 
     @property
     def sigmas(self):
@@ -129,7 +110,7 @@ class Triangular(ContinuousFuzzySet):
     Implementation of the Triangular membership function, written in PyTorch.
     """
 
-    def __init__(self, in_features, centers=None, widths=None, supports=None, labels=None):
+    def __init__(self, in_features, centers=None, widths=None, labels=None):
         """
         Initialization.
         INPUT:
@@ -139,7 +120,7 @@ class Triangular(ContinuousFuzzySet):
             centers and widths are initialized randomly by default,
             but widths must be > 0
         """
-        super(Triangular, self).__init__(in_features, centers, widths, supports, labels)
+        super(Triangular, self).__init__(in_features, centers, widths, labels)
 
     def forward(self, observations):
         """
