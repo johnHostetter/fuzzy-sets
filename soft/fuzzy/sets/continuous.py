@@ -116,24 +116,6 @@ class ContinuousFuzzySet(torch.nn.Module):
         self.log_widths()  # update the stored log widths
         self.sort()
 
-    def increase_support_of(self, index):
-        """
-        The 'index' refers to the index of a Gaussian fuzzy set on this dimension.
-
-        We want to increase the support or the count of this fuzzy set as the number of
-        data points increase that shows the fuzzy set located at 'index' is satisfactory for representing them.
-
-        Args:
-            index:
-
-        Returns:
-
-        """
-        values = torch.zeros(self.supports.shape)
-        values[index] = 1
-        with torch.no_grad():
-            self.supports = torch.add(self.supports, values)
-
     def forward(self):
         raise NotImplementedError('The Base Fuzzy Set has no membership function defined.')
 
