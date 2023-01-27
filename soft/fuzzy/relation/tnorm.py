@@ -84,4 +84,7 @@ class StandardIntersection(DiscreteFuzzySet):
         for fuzzyset in self.fuzzysets:
             degrees.append(fuzzyset.degree(x))
         return min(degrees)
-    
+
+
+class Minimum:
+    pass
