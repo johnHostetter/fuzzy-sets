@@ -43,7 +43,7 @@ class AlgebraicProduct(torch.nn.Module):
         Applies the function to the input elementwise.
         """
         self.importance = torch.nn.parameter.Parameter(torch.abs(self.importance))  # importance can only be [0, 1]
-        return torch.prod(torch.mul(torch.tensor(x), self.importance))
+        return torch.prod(torch.mul(x, self.importance))
 
 
 class StandardIntersection(DiscreteFuzzySet):
