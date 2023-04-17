@@ -4,7 +4,7 @@ import numpy as np
 
 class ContinuousFuzzySet(torch.nn.Module):
     def __init__(self, in_features, centers=None, widths=None, labels=None):
-        super(ContinuousFuzzySet, self).__init__()
+        super().__init__()
         self.in_features = in_features
         self._log_widths = None
         self.labels = labels
@@ -78,7 +78,7 @@ class Gaussian(ContinuousFuzzySet):
             centers and sigmas are initialized randomly by default,
             but sigmas must be > 0
         """
-        super(Gaussian, self).__init__(in_features, centers, widths, labels)
+        super().__init__(in_features, centers, widths, labels)
 
     @property
     def sigmas(self):
@@ -120,7 +120,7 @@ class Triangular(ContinuousFuzzySet):
             centers and widths are initialized randomly by default,
             but widths must be > 0
         """
-        super(Triangular, self).__init__(in_features, centers, widths, labels)
+        super().__init__(in_features, centers, widths, labels)
 
     def forward(self, observations):
         """
