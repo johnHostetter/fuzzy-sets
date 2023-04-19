@@ -1,87 +1,108 @@
+"""
+Demo of working with discrete fuzzy sets for a toy task regarding knowledge of material.
+"""
+from sympy import Symbol, Interval, oo  # oo is infinity
+
 from soft.fuzzy.relation.tnorm import StandardIntersection
 from soft.fuzzy.relation.extension import AlphaCut, SpecialFuzzySet
 from soft.fuzzy.sets.discrete import OrdinaryDiscreteFuzzySet, FuzzyVariable
 
-from sympy import Symbol, Interval, oo  # oo is infinity
-
 
 # https://www-sciencedirect-com.prox.lib.ncsu.edu/science/article/pii/S0957417412008056
 
-def Unknown():
+def unknown():
+    """
+    Create a fuzzy set for the linguistic term 'unknown'.
+
+    Returns:
+        OrdinaryDiscreteFuzzySet
+    """
     formulas = []
-    x = Symbol('x')
+    element = Symbol('x')
     formulas.append((1, Interval.Lopen(-oo, 55)))
-    formulas.append((1 - (x - 55) / 5, Interval.open(55, 60)))
+    formulas.append((1 - (element - 55) / 5, Interval.open(55, 60)))
     formulas.append((0, Interval.Ropen(60, oo)))
-    return OrdinaryDiscreteFuzzySet(formulas, 'Unknown')
+    return OrdinaryDiscreteFuzzySet(formulas, 'unknown')
 
 
-def Known():
+def known():
+    """
+    Create a fuzzy set for the linguistic term 'known'.
+
+    Returns:
+        OrdinaryDiscreteFuzzySet
+    """
     formulas = []
-    x = Symbol('x')
-    formulas.append(((x - 70) / 5, Interval.open(70, 75)))
+    element = Symbol('x')
+    formulas.append(((element - 70) / 5, Interval.open(70, 75)))
     formulas.append((1, Interval(75, 85)))
-    formulas.append((1 - (x - 85) / 5, Interval.open(85, 90)))
+    formulas.append((1 - (element - 85) / 5, Interval.open(85, 90)))
     formulas.append((0, Interval.Lopen(-oo, 70)))
     formulas.append((0, Interval.Ropen(90, oo)))
-    return OrdinaryDiscreteFuzzySet(formulas, 'Known')
+    return OrdinaryDiscreteFuzzySet(formulas, 'known')
 
 
-def UnsatisfactoryUnknown():
+def unsatisfactory_unknown():
+    """
+    Create a fuzzy set for the linguistic term 'unsatisfactory unknown'.
+
+    Returns:
+        OrdinaryDiscreteFuzzySet
+    """
     formulas = []
-    x = Symbol('x')
-    formulas.append(((x - 55) / 5, Interval.open(55, 60)))
+    element = Symbol('x')
+    formulas.append(((element - 55) / 5, Interval.open(55, 60)))
     formulas.append((1, Interval(60, 70)))
-    formulas.append((1 - (x - 70) / 5, Interval.open(70, 75)))
+    formulas.append((1 - (element - 70) / 5, Interval.open(70, 75)))
     formulas.append((0, Interval.Lopen(-oo, 55)))
     formulas.append((0, Interval.Ropen(75, oo)))
-    return OrdinaryDiscreteFuzzySet(formulas, 'Unsatisfactory Unknown')
+    return OrdinaryDiscreteFuzzySet(formulas, 'unsatisfactory unknown')
 
 
-def Learned():
+def learned():
+    """
+    Create a fuzzy set for the linguistic term 'learned'.
+
+    Returns:
+        OrdinaryDiscreteFuzzySet
+    """
     formulas = []
-    x = Symbol('x')
-    formulas.append(((x - 85) / 5, Interval.open(85, 90)))
+    element = Symbol('x')
+    formulas.append(((element - 85) / 5, Interval.open(85, 90)))
     formulas.append((1, Interval(90, 100)))
     formulas.append((0, Interval.Lopen(-oo, 85)))
-    return OrdinaryDiscreteFuzzySet(formulas, 'Learned')
+    return OrdinaryDiscreteFuzzySet(formulas, 'learned')
 
 
-unknown = Unknown()
-known = Known()
-unsatisfactoryUnknown = UnsatisfactoryUnknown()
-learned = Learned()
-terms = [unknown, known, unsatisfactoryUnknown, learned]
+if __name__ == "__main__":
+    terms = [unknown(), known(), unsatisfactory_unknown(), learned()]
 
-fuzzyVariable = FuzzyVariable(terms, 'Student Knowledge')
-fuzzyVariable.graph(samples=150)
+    fuzzyVariable = FuzzyVariable(terms, 'Student Knowledge')
+    fuzzyVariable.graph(samples=150)
 
-# --- DEMO --- Classify 'x'
+    # --- DEMO --- Classify 'element'
 
-x = 73
+    example_element_membership = fuzzyVariable.degree(element=73)
 
-z = fuzzyVariable.degree(x)
+    alphacut = AlphaCut(known(), 0.6, 'AlphaCut')
+    alphacut.graph(samples=250)
+    specialFuzzySet = SpecialFuzzySet(known(), 0.5, 'Special')
+    specialFuzzySet.graph()
 
-alphacut = AlphaCut(known, 0.6, 'AlphaCut')
-alphacut.graph(samples=250)
-specialFuzzySet = SpecialFuzzySet(known, 0.5, 'Special')
-specialFuzzySet.graph()
+    cuts = []
+    idx, MAX_HEIGHT, IDX_OF_MAX = 0, 0, 0
+    for idx, membership_to_fuzzy_term in enumerate(example_element_membership):
+        if example_element_membership[idx] > 0:
+            specialFuzzySet = SpecialFuzzySet(
+                terms[idx], membership_to_fuzzy_term, terms[idx].name)
+            cuts.append(StandardIntersection([specialFuzzySet, terms[idx]], name=f"A{idx + 1}"))
 
-cuts = []
-max_height = 0
-idx_of_max = 0
-for i in range(len(z)):
-    if z[i] > 0:
-        specialFuzzySet = SpecialFuzzySet(terms[i], z[i], terms[i].name)
-        cuts.append(StandardIntersection([specialFuzzySet, terms[i]], name='A{}'.format(i + 1)))
+            # maximum membership principle
+            if membership_to_fuzzy_term > MAX_HEIGHT:
+                MAX_HEIGHT, IDX_OF_MAX = membership_to_fuzzy_term, idx
 
-        # maximum membership principle
-        if z[i] > max_height:
-            max_height = z[i]
-            idx_of_max = i
+    Z = FuzzyVariable(cuts, name='Confluence')
+    Z.graph()
 
-Z = FuzzyVariable(cuts, name='Confluence')
-Z.graph()
-
-# maximum membership principle
-print('Maximum Membership Principle: %s' % (terms[i].name))
+    # maximum membership principle
+    print(f"Maximum Membership Principle: {terms[idx].name}")
