@@ -30,8 +30,10 @@ class AlgebraicProduct(torch.nn.Module):
             self.importance = torch.nn.parameter.Parameter(torch.tensor(1.0))
             self.importance.requires_grad = False
         else:
+            if not isinstance(importance, torch.Tensor):
+                importance = torch.Tensor(importance)
             self.importance = torch.nn.parameter.Parameter(
-                torch.abs(torch.tensor(importance)))  # importance can only be [0, 1]
+                torch.abs(importance))  # importance can only be [0, 1]
             self.importance.requires_grad = True
 
     @staticmethod
