@@ -33,15 +33,15 @@ class DiscreteFuzzySet:
         for x in x_list:
             y_list.append(self.degree(x))
         if self.name is not None:
-            plt.title('%s Fuzzy Set' % self.name)
+            plt.title(f"{self.name} Fuzzy Set")
         else:
-            plt.title('Unnamed Fuzzy Set')
+            plt.title("Unnamed Fuzzy Set")
 
         plt.xlim([lower, upper])
         plt.ylim([0, 1.1])
-        plt.xlabel('Elements of Universe')
-        plt.ylabel('Degree of Membership')
-        plt.plot(x_list, y_list, color='grey', label='mu')
+        plt.xlabel("Elements of Universe")
+        plt.ylabel("Degree of Membership")
+        plt.plot(x_list, y_list, color="grey", label="mu")
         plt.legend()
         plt.show()
 
@@ -148,11 +148,11 @@ class FuzzyVariable(DiscreteFuzzySet):
     A fuzzy variable, or linguistic variable, that contains fuzzy sets.
     """
 
-    def __init__(self, fuzzySets, name=None):
+    def __init__(self, fuzzy_sets, name=None):
         """
         Parameters
         ----------
-        fuzzySets : 'list'
+        fuzzy_sets : 'list'
             A list of elements each of type OrdinaryFuzzySet.
         name : 'str'/'None'
             Default value is None. Allows the user to specify the name of the fuzzy set.
@@ -160,58 +160,54 @@ class FuzzyVariable(DiscreteFuzzySet):
             other fuzzy sets in the same space.
         """
         DiscreteFuzzySet.__init__(self)
-        self.fuzzySets = fuzzySets
+        self.fuzzy_sets = fuzzy_sets
         self.name = name
 
-    def degree(self, x):
+    def degree(self, element):
         """
-        Calculates the degree of membership for the provided x value where x is a(n) int/float.
+        Calculates the degree of membership for the provided element value
+        where element is a(n) int/float.
 
-        Parameters
-        ----------
-        x : 'float'
-            The parameter x is the element from the universe of discourse X.
+        Args:
+            element: The element from the universe of discourse.
 
-        Returns
-        -------
-        y : 'float'
-            The degree of membership for element x.
+        Returns:
+            The degree of membership for the element.
         """
         degrees = []
-        for fuzzySet in self.fuzzySets:
-            degrees.append(fuzzySet.degree(x))
+        for fuzzy_set in self.fuzzy_sets:
+            degrees.append(fuzzy_set.degree(element))
         return tuple(degrees)
 
     def graph(self, lower=0, upper=100, samples=100):
         """
         Graphs the fuzzy set in the universe of elements.
 
-        Parameters
-        ----------
-        lower : 'float', optional
-            Default value is 0. Specifies the infimum x value for the graph.
-        upper : 'float', optional
-            Default value is 100. Specifies the supremum x value for the graph.
-        samples : 'int', optional
-            Default value is 100. Specifies the number of x values to test in the domain
+        Args:
+            lower: Default value is 0. Specifies the infimum x value for the graph.
+            upper: Default value is 100. Specifies the supremum x value for the graph.
+            samples: Default value is 100. Specifies the number of x values to test in the domain
             to approximate the graph. A higher sample value will yield a higher resolution
             of the graph, but large values will lead to performance issues.
+
+        Returns:
+            None
         """
-        for fuzzySet in self.fuzzySets:
+        for fuzzy_set in self.fuzzy_sets:
             x_list = np.linspace(lower, upper, samples)
             y_list = []
             for x in x_list:
-                y_list.append(fuzzySet.degree(x))
-            plt.plot(x_list, y_list, color=np.random.rand(3, ), label=fuzzySet.name)
+                y_list.append(fuzzy_set.degree(x))
+            plt.plot(x_list, y_list, color=np.random.rand(3, ), label=fuzzy_set.name)
 
         if self.name is not None:
-            plt.title('%s Fuzzy Variable' % self.name)
+            plt.title("{self.name} Fuzzy Variable")
         else:
-            plt.title('Unnamed Fuzzy Variable')
+            plt.title("Unnamed Fuzzy Variable")
 
         plt.xlim([lower, upper])
         plt.ylim([0, 1.1])
-        plt.xlabel('Elements of Universe')
-        plt.ylabel('Degree of Membership')
+        plt.xlabel("Elements of Universe")
+        plt.ylabel("Degree of Membership")
         plt.legend()
         plt.show()
