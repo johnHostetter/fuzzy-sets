@@ -31,10 +31,14 @@ class ContinuousFuzzySet(torch.nn.Module):
             # in other words, since gradient descent may make the widths negative,
             # we nullify that effect
             self.widths = torch.rand(self.in_features)
+            self.mask = torch.ones(self.widths.shape)
         else:
             # we assume the widths are given to us are within (0, 1)
             widths = self.convert_to_tensor(widths)
-            self.widths = torch.nn.parameter.Parameter(torch.abs(widths))
+            # negative widths are a special flag to indicate that the fuzzy set
+            # at that location does not actually exist
+            self.mask = (widths > 0).int()  # keep only the valid fuzzy sets
+            self.widths = torch.nn.parameter.Parameter(widths)
 
         self.log_widths()  # update the stored log widths
 
@@ -47,7 +51,7 @@ class ContinuousFuzzySet(torch.nn.Module):
             The logarithm of the widths.
         """
         with torch.no_grad():
-            self._log_widths = torch.nn.parameter.Parameter(torch.log(self.widths))
+            self._log_widths = torch.nn.parameter.Parameter(torch.exp(self.widths))
         return self._log_widths
 
     @staticmethod
@@ -154,7 +158,7 @@ class Gaussian(ContinuousFuzzySet):
         """
         return torch.exp(-1.0 * (torch.pow(
             self.convert_to_tensor(observations).unsqueeze(dim=-1) - self.centers,
-            2) / torch.pow(torch.exp(self._log_widths), 2)))
+            2) / torch.pow(torch.log(self._log_widths), 2))) * self.mask
 
 
 class Triangular(ContinuousFuzzySet):
@@ -186,7 +190,7 @@ class Triangular(ContinuousFuzzySet):
         Returns:
             The membership degrees of the observations for the Triangular fuzzy set.
         """
-        return torch.max(1.0 - (1.0 / torch.exp(
+        return torch.max(1.0 - (1.0 / torch.log(
             self._log_widths)) * torch.abs(
             self.convert_to_tensor(
-                observations).unsqueeze(dim=-1) - self.centers), torch.tensor(0.0))
+                observations).unsqueeze(dim=-1) - self.centers), torch.tensor(0.0)) * self.mask
