@@ -1,3 +1,7 @@
+"""
+Implements the t-norm fuzzy relations.
+"""
+
 import torch
 
 from soft.fuzzy.sets.discrete import DiscreteFuzzySet
@@ -17,7 +21,7 @@ class AlgebraicProduct(torch.nn.Module):
             - sigmas: trainable parameter
             importance is initialized to a one vector by default
         """
-        super(AlgebraicProduct, self).__init__()
+        super().__init__()
         self.in_features = in_features
         self.name = 'algebraic product'
 
@@ -26,7 +30,10 @@ class AlgebraicProduct(torch.nn.Module):
             self.importance = torch.nn.parameter.Parameter(torch.tensor(1.0))
             self.importance.requires_grad = False
         else:
-            self.importance = torch.nn.parameter.Parameter(torch.abs(torch.tensor(importance)))  # importance can only be [0, 1]
+            if not isinstance(importance, torch.Tensor):
+                importance = torch.Tensor(importance)
+            self.importance = torch.nn.parameter.Parameter(
+                torch.abs(importance))  # importance can only be [0, 1]
             self.importance.requires_grad = True
 
     @staticmethod
@@ -42,7 +49,8 @@ class AlgebraicProduct(torch.nn.Module):
         Forward pass of the function.
         Applies the function to the input elementwise.
         """
-        self.importance = torch.nn.parameter.Parameter(torch.abs(self.importance))  # importance can only be [0, 1]
+        self.importance = torch.nn.parameter.Parameter(
+            torch.abs(self.importance))  # importance can only be [0, 1]
         return torch.prod(torch.mul(x, self.importance))
 
 
@@ -51,11 +59,11 @@ class StandardIntersection(DiscreteFuzzySet):
     A standard intersection of one or more ordinary fuzzy sets.
     """
 
-    def __init__(self, fuzzysets, name=None):
+    def __init__(self, fuzzy_sets, name=None):
         """
         Parameters
         ----------
-        fuzzySets : 'list'
+        fuzzy_sets : 'list'
             A list of elements each of type OrdinaryFuzzySet.
         name : 'str'/'None'
             Default value is None. Allows the user to specify the name of the fuzzy set.
@@ -63,7 +71,7 @@ class StandardIntersection(DiscreteFuzzySet):
             other fuzzy fets in the same space.
         """
         DiscreteFuzzySet.__init__(self)
-        self.fuzzysets = fuzzysets
+        self.fuzzy_sets = fuzzy_sets
         self.name = name
 
     def degree(self, x):
@@ -81,7 +89,7 @@ class StandardIntersection(DiscreteFuzzySet):
             The degree of membership for element x.
         """
         degrees = []
-        for fuzzyset in self.fuzzysets:
+        for fuzzyset in self.fuzzy_sets:
             degrees.append(fuzzyset.degree(x))
         return min(degrees)
 
