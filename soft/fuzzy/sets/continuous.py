@@ -3,6 +3,7 @@ Implements the continuous fuzzy sets, using PyTorch.
 """
 
 import torch
+import torchquad
 import numpy as np
 
 
@@ -18,9 +19,10 @@ class ContinuousFuzzySet(torch.nn.Module):
 
         # initialize centers
         if centers is None:
-            self.centers = torch.nn.parameter.Parameter(torch.randn(self.in_features))
+            self.centers = torch.nn.parameter.Parameter(torch.randn(self.in_features)).float()
         else:
-            centers = self.convert_to_tensor(centers)
+            if not isinstance(centers, torch.Tensor):
+                centers = torch.tensor(np.array(centers)).float()
             self.centers = torch.nn.parameter.Parameter(centers)
 
         # initialize widths -- never adjust the widths directly,
@@ -30,11 +32,12 @@ class ContinuousFuzzySet(torch.nn.Module):
             # nonzero, with an exponential function they are still positive
             # in other words, since gradient descent may make the widths negative,
             # we nullify that effect
-            self.widths = torch.rand(self.in_features)
+            self.widths = torch.rand(self.in_features).float()
             self.mask = torch.ones(self.widths.shape)
         else:
             # we assume the widths are given to us are within (0, 1)
-            widths = self.convert_to_tensor(widths)
+            if not isinstance(widths, torch.Tensor):
+                widths = torch.tensor(np.array(widths)).float()
             # negative widths are a special flag to indicate that the fuzzy set
             # at that location does not actually exist
             self.mask = (widths > 0).int()  # keep only the valid fuzzy sets
@@ -107,6 +110,45 @@ class ContinuousFuzzySet(torch.nn.Module):
             self.widths = torch.nn.Parameter(torch.cat([self.widths, widths]))
         self.log_widths()  # update the stored log widths
 
+    def split(self):
+        """
+        Splits the fuzzy set (if representing a fuzzy variable) into individual fuzzy sets (the
+        fuzzy variable's possible fuzzy terms).
+
+        Returns:
+            A list of ContinuousFuzzySet objects.
+        """
+        fuzzy_sets = []
+        for center, width in zip(self.centers.detach(), self.widths.detach()):
+            fuzzy_sets.append(self.__class__(in_features=1, centers=center, widths=width))
+
+        return fuzzy_sets
+
+    def area(self):
+        """
+        Calculate the area beneath the fuzzy curve (i.e., membership function) using torchquad.
+
+        This is a slightly expensive operation, but it is used for approximating the Mamdani fuzzy
+        inference with arbitrary continuous fuzzy sets.
+
+        Typically, the results will be cached somewhere, so that the area value can be reused.
+
+        Returns:
+            torch.Tensor
+        """
+        fuzzy_sets = self.split()  # break down this (self) fuzzy set into individual fuzzy sets
+        simpson_method, areas = torchquad.Simpson(), []
+        for fuzzy_set in fuzzy_sets:
+            areas.append(
+                simpson_method.integrate(
+                    fuzzy_set, dim=1, N=101, integration_domain=[
+                        [fuzzy_set.centers.item() - fuzzy_set.widths.item(),
+                         fuzzy_set.centers.item() + fuzzy_set.widths.item()]
+                    ]
+                ).item()
+            )
+        return torch.tensor(areas)
+
     def forward(self):
         """
         Calculate the membership of an element to this fuzzy set; not implemented as this is a
@@ -156,9 +198,11 @@ class Gaussian(ContinuousFuzzySet):
         Returns:
             The membership degrees of the observations for the Gaussian fuzzy set.
         """
-        return torch.exp(-1.0 * (torch.pow(
-            self.convert_to_tensor(observations).unsqueeze(dim=-1) - self.centers,
-            2) / torch.pow(torch.log(self._log_widths), 2))) * self.mask
+        if not isinstance(observations, torch.Tensor):
+            observations = torch.tensor(np.array(observations))
+        return torch.exp(
+            -1.0 * (torch.pow(observations.unsqueeze(dim=-1) - self.centers, 2) / torch.pow(
+                torch.log(self._log_widths), 2))) * self.mask
 
 
 class Triangular(ContinuousFuzzySet):
