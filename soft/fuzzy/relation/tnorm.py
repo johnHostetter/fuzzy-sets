@@ -12,7 +12,7 @@ class AlgebraicProduct(torch.nn.Module):
     Implementation of the Algebraic Product t-norm (Fuzzy AND).
     """
 
-    def __init__(self, in_features, importance=None):
+    def __init__(self, in_features=None, importance=None):
         """
         Initialization.
         INPUT:
@@ -23,7 +23,6 @@ class AlgebraicProduct(torch.nn.Module):
         """
         super().__init__()
         self.in_features = in_features
-        self.name = 'algebraic product'
 
         # initialize antecedent importance
         if importance is None:
@@ -37,11 +36,11 @@ class AlgebraicProduct(torch.nn.Module):
             self.importance.requires_grad = True
 
     @staticmethod
-    def name():
+    def get_name():
         return 'algebraic product'
 
     @staticmethod
-    def type():
+    def get_type():
         return 't-norm'
 
     def forward(self, x):

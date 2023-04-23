@@ -1,3 +1,6 @@
+"""
+Implements the various fuzzy complement definitions for the discrete fuzzy sets.
+"""
 from soft.fuzzy.sets.discrete import DiscreteFuzzySet
 
 

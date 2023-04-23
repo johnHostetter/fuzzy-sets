@@ -3,6 +3,7 @@ Implements the continuous fuzzy sets, using PyTorch.
 """
 
 import torch
+import torchquad
 import numpy as np
 
 
@@ -10,6 +11,7 @@ class ContinuousFuzzySet(torch.nn.Module):
     """
     A generic and abstract torch.nn.Module class that implements continuous fuzzy sets.
     """
+
     def __init__(self, in_features, centers=None, widths=None, labels=None):
         super().__init__()
         self.in_features = in_features
@@ -18,9 +20,10 @@ class ContinuousFuzzySet(torch.nn.Module):
 
         # initialize centers
         if centers is None:
-            self.centers = torch.nn.parameter.Parameter(torch.randn(self.in_features))
+            self.centers = torch.nn.parameter.Parameter(torch.randn(self.in_features)).float()
         else:
-            centers = self.convert_to_tensor(centers)
+            if not isinstance(centers, torch.Tensor):
+                centers = torch.tensor(np.array(centers)).float()
             self.centers = torch.nn.parameter.Parameter(centers)
 
         # initialize widths -- never adjust the widths directly,
@@ -30,11 +33,12 @@ class ContinuousFuzzySet(torch.nn.Module):
             # nonzero, with an exponential function they are still positive
             # in other words, since gradient descent may make the widths negative,
             # we nullify that effect
-            self.widths = torch.rand(self.in_features)
+            self.widths = torch.rand(self.in_features).float()
             self.mask = torch.ones(self.widths.shape)
         else:
             # we assume the widths are given to us are within (0, 1)
-            widths = self.convert_to_tensor(widths)
+            if not isinstance(widths, torch.Tensor):
+                widths = torch.tensor(np.array(widths)).float()
             # negative widths are a special flag to indicate that the fuzzy set
             # at that location does not actually exist
             self.mask = (widths > 0).int()  # keep only the valid fuzzy sets
@@ -67,8 +71,7 @@ class ContinuousFuzzySet(torch.nn.Module):
         """
         if isinstance(values, torch.Tensor):
             return values
-        else:
-            return torch.tensor(np.array(values)).float()
+        return torch.tensor(np.array(values)).float()
 
     def reshape_parameters(self):
         """
@@ -107,11 +110,68 @@ class ContinuousFuzzySet(torch.nn.Module):
             self.widths = torch.nn.Parameter(torch.cat([self.widths, widths]))
         self.log_widths()  # update the stored log widths
 
-    def forward(self):
+    def area_helper(self, fuzzy_sets):
+        """
+        Splits the fuzzy set (if representing a fuzzy variable) into individual fuzzy sets (the
+        fuzzy variable's possible fuzzy terms), and does so recursively until the base case is
+        reached. Once the base case is reached (i.e., a single fuzzy set), the area under its
+        curve within the integration_domain is calculated. The result is a
+
+        Args:
+            fuzzy_sets: The fuzzy set to split into smaller fuzzy sets.
+
+        Returns:
+            A list of floats.
+        """
+        results = []
+        for params in zip(fuzzy_sets.centers, fuzzy_sets.widths):
+            centers, widths = params[0], params[1]
+            fuzzy_set = self.__class__(in_features=centers.ndim, centers=centers, widths=widths)
+
+            if centers.ndim > 0:
+                results.append(self.area_helper(fuzzy_set))
+            else:
+                simpson_method = torchquad.Simpson()
+                area = simpson_method.integrate(
+                    fuzzy_set, dim=1, N=101, integration_domain=[
+                        [fuzzy_set.centers.item() - fuzzy_set.widths.item(),
+                         fuzzy_set.centers.item() + fuzzy_set.widths.item()]
+                    ]
+                ).item()
+                if fuzzy_set.widths.item() <= 0 and area != 0.:
+                    # if the width of a fuzzy set is negative or zero, it is a special flag that
+                    # the fuzzy set does not exist; thus, the calculated area of a fuzzy set w/ a
+                    # width <= 0 should be zero. However, in the case this does not occur,
+                    # a zero will substitute to be sure that this issue does not affect results
+                    area = 0.0
+                results.append(area)
+
+        return results
+
+    def area(self):
+        """
+        Calculate the area beneath the fuzzy curve (i.e., membership function) using torchquad.
+
+        This is a slightly expensive operation, but it is used for approximating the Mamdani fuzzy
+        inference with arbitrary continuous fuzzy sets.
+
+        Typically, the results will be cached somewhere, so that the area value can be reused.
+
+        Returns:
+            torch.Tensor
+        """
+        return torch.tensor(self.area_helper(self)).float()
+
+    def forward(self, observations):
         """
         Calculate the membership of an element to this fuzzy set; not implemented as this is a
         generic and abstract class. This method is overridden by a class that specifies the type
         of fuzzy set (e.g., Gaussian, Triangular).
+
+        Args:
+            observations: Two-dimensional matrix of observations,
+            where a row is a single observation and each column
+            is related to an attribute measured during that observation.
 
         Returns:
             None
@@ -123,25 +183,24 @@ class Gaussian(ContinuousFuzzySet):
     """
     Implementation of the Gaussian membership function, written in PyTorch.
     """
-
-    def __init__(self, in_features, centers=None, widths=None, labels=None):
-        """
-        Initialization.
-        INPUT:
-            - in_features: shape of the input
-            - centers: trainable parameter
-            - sigmas: trainable parameter
-            centers and sigmas are initialized randomly by default,
-            but sigmas must be > 0
-        """
-        super().__init__(in_features, centers, widths, labels)
-
     @property
     def sigmas(self):
+        """
+        Gets the sigma for the Gaussian fuzzy set; alias for the 'widths' parameter.
+
+        Returns:
+            torch.Tensor
+        """
         return self.widths
 
     @sigmas.setter
     def sigmas(self, sigmas):
+        """
+        Sets the sigma for the Gaussian fuzzy set; alias for the 'widths' parameter.
+
+        Returns:
+            None
+        """
         self.widths = sigmas
 
     def forward(self, observations):
@@ -156,28 +215,17 @@ class Gaussian(ContinuousFuzzySet):
         Returns:
             The membership degrees of the observations for the Gaussian fuzzy set.
         """
-        return torch.exp(-1.0 * (torch.pow(
-            self.convert_to_tensor(observations).unsqueeze(dim=-1) - self.centers,
-            2) / torch.pow(torch.log(self._log_widths), 2))) * self.mask
+        if not isinstance(observations, torch.Tensor):
+            observations = torch.tensor(np.array(observations))
+        return torch.exp(
+            -1.0 * (torch.pow(observations.unsqueeze(dim=-1) - self.centers, 2) / torch.pow(
+                torch.log(self._log_widths), 2))) * self.mask
 
 
 class Triangular(ContinuousFuzzySet):
     """
     Implementation of the Triangular membership function, written in PyTorch.
     """
-
-    def __init__(self, in_features, centers=None, widths=None, labels=None):
-        """
-        Initialization.
-        INPUT:
-            - in_features: shape of the input
-            - centers: trainable parameter
-            - widths: trainable parameter
-            centers and widths are initialized randomly by default,
-            but widths must be > 0
-        """
-        super().__init__(in_features, centers, widths, labels)
-
     def forward(self, observations):
         """
         Forward pass of the function. Applies the function to the input elementwise.
