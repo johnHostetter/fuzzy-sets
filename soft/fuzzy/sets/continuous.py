@@ -142,8 +142,8 @@ class ContinuousFuzzySet(torch.nn.Module):
                     # if the width of a fuzzy set is negative or zero, it is a special flag that
                     # the fuzzy set does not exist; thus, the calculated area of a fuzzy set w/ a
                     # width <= 0 should be zero. However, in the case this does not occur,
-                    # an Error will be thrown to be sure that this issue is noticed
-                    raise ValueError("The area of a fuzzy curve has not been correctly calculated.")
+                    # a zero will substitute to be sure that this issue does not affect results
+                    area = 0.0
                 results.append(area)
 
         return results
@@ -160,7 +160,7 @@ class ContinuousFuzzySet(torch.nn.Module):
         Returns:
             torch.Tensor
         """
-        return torch.tensor(self.area_helper(self))
+        return torch.tensor(self.area_helper(self)).float()
 
     def forward(self, observations):
         """

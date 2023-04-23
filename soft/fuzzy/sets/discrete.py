@@ -1,3 +1,6 @@
+"""
+Implements the discrete fuzzy sets.
+"""
 import sympy
 import numpy as np
 from sympy import Symbol
