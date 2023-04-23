@@ -11,6 +11,7 @@ class ContinuousFuzzySet(torch.nn.Module):
     """
     A generic and abstract torch.nn.Module class that implements continuous fuzzy sets.
     """
+
     def __init__(self, in_features, centers=None, widths=None, labels=None):
         super().__init__()
         self.in_features = in_features
@@ -70,8 +71,7 @@ class ContinuousFuzzySet(torch.nn.Module):
         """
         if isinstance(values, torch.Tensor):
             return values
-        else:
-            return torch.tensor(np.array(values)).float()
+        return torch.tensor(np.array(values)).float()
 
     def reshape_parameters(self):
         """
@@ -110,19 +110,43 @@ class ContinuousFuzzySet(torch.nn.Module):
             self.widths = torch.nn.Parameter(torch.cat([self.widths, widths]))
         self.log_widths()  # update the stored log widths
 
-    def split(self):
+    def area_helper(self, fuzzy_sets):
         """
         Splits the fuzzy set (if representing a fuzzy variable) into individual fuzzy sets (the
-        fuzzy variable's possible fuzzy terms).
+        fuzzy variable's possible fuzzy terms), and does so recursively until the base case is
+        reached. Once the base case is reached (i.e., a single fuzzy set), the area under its
+        curve within the integration_domain is calculated. The result is a
+
+        Args:
+            fuzzy_sets: The fuzzy set to split into smaller fuzzy sets.
 
         Returns:
-            A list of ContinuousFuzzySet objects.
+            A list of floats.
         """
-        fuzzy_sets = []
-        for center, width in zip(self.centers.detach(), self.widths.detach()):
-            fuzzy_sets.append(self.__class__(in_features=1, centers=center, widths=width))
+        results = []
+        for params in zip(fuzzy_sets.centers, fuzzy_sets.widths):
+            centers, widths = params[0], params[1]
+            fuzzy_set = self.__class__(in_features=centers.ndim, centers=centers, widths=widths)
 
-        return fuzzy_sets
+            if centers.ndim > 0:
+                results.append(self.area_helper(fuzzy_set))
+            else:
+                simpson_method = torchquad.Simpson()
+                area = simpson_method.integrate(
+                    fuzzy_set, dim=1, N=101, integration_domain=[
+                        [fuzzy_set.centers.item() - fuzzy_set.widths.item(),
+                         fuzzy_set.centers.item() + fuzzy_set.widths.item()]
+                    ]
+                ).item()
+                if fuzzy_set.widths.item() <= 0 and area != 0.:
+                    # if the width of a fuzzy set is negative or zero, it is a special flag that
+                    # the fuzzy set does not exist; thus, the calculated area of a fuzzy set w/ a
+                    # width <= 0 should be zero. However, in the case this does not occur,
+                    # an Error will be thrown to be sure that this issue is noticed
+                    raise ValueError("The area of a fuzzy curve has not been correctly calculated.")
+                results.append(area)
+
+        return results
 
     def area(self):
         """
@@ -136,24 +160,18 @@ class ContinuousFuzzySet(torch.nn.Module):
         Returns:
             torch.Tensor
         """
-        fuzzy_sets = self.split()  # break down this (self) fuzzy set into individual fuzzy sets
-        simpson_method, areas = torchquad.Simpson(), []
-        for fuzzy_set in fuzzy_sets:
-            areas.append(
-                simpson_method.integrate(
-                    fuzzy_set, dim=1, N=101, integration_domain=[
-                        [fuzzy_set.centers.item() - fuzzy_set.widths.item(),
-                         fuzzy_set.centers.item() + fuzzy_set.widths.item()]
-                    ]
-                ).item()
-            )
-        return torch.tensor(areas)
+        return torch.tensor(self.area_helper(self))
 
-    def forward(self):
+    def forward(self, observations):
         """
         Calculate the membership of an element to this fuzzy set; not implemented as this is a
         generic and abstract class. This method is overridden by a class that specifies the type
         of fuzzy set (e.g., Gaussian, Triangular).
+
+        Args:
+            observations: Two-dimensional matrix of observations,
+            where a row is a single observation and each column
+            is related to an attribute measured during that observation.
 
         Returns:
             None
@@ -165,25 +183,24 @@ class Gaussian(ContinuousFuzzySet):
     """
     Implementation of the Gaussian membership function, written in PyTorch.
     """
-
-    def __init__(self, in_features, centers=None, widths=None, labels=None):
-        """
-        Initialization.
-        INPUT:
-            - in_features: shape of the input
-            - centers: trainable parameter
-            - sigmas: trainable parameter
-            centers and sigmas are initialized randomly by default,
-            but sigmas must be > 0
-        """
-        super().__init__(in_features, centers, widths, labels)
-
     @property
     def sigmas(self):
+        """
+        Gets the sigma for the Gaussian fuzzy set; alias for the 'widths' parameter.
+
+        Returns:
+            torch.Tensor
+        """
         return self.widths
 
     @sigmas.setter
     def sigmas(self, sigmas):
+        """
+        Sets the sigma for the Gaussian fuzzy set; alias for the 'widths' parameter.
+
+        Returns:
+            None
+        """
         self.widths = sigmas
 
     def forward(self, observations):
@@ -209,19 +226,6 @@ class Triangular(ContinuousFuzzySet):
     """
     Implementation of the Triangular membership function, written in PyTorch.
     """
-
-    def __init__(self, in_features, centers=None, widths=None, labels=None):
-        """
-        Initialization.
-        INPUT:
-            - in_features: shape of the input
-            - centers: trainable parameter
-            - widths: trainable parameter
-            centers and widths are initialized randomly by default,
-            but widths must be > 0
-        """
-        super().__init__(in_features, centers, widths, labels)
-
     def forward(self, observations):
         """
         Forward pass of the function. Applies the function to the input elementwise.
