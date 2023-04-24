@@ -1,8 +1,6 @@
 """
 Implements the continuous fuzzy sets, using PyTorch.
 """
-from functools import partial
-
 import torch
 import torchquad
 import numpy as np
@@ -113,7 +111,7 @@ class ContinuousFuzzySet(torch.nn.Module):
             self.widths = torch.nn.Parameter(torch.cat([self.widths, widths]))
         self.log_widths()  # update the stored log widths
 
-    def area_helper(self, fuzzy_sets, elements):
+    def area_helper(self, fuzzy_sets):
         """
         Splits the fuzzy set (if representing a fuzzy variable) into individual fuzzy sets (the
         fuzzy variable's possible fuzzy terms), and does so recursively until the base case is
@@ -134,29 +132,19 @@ class ContinuousFuzzySet(torch.nn.Module):
             )
 
             if centers.ndim > 0:
-                def special_fuzzy_set(fuzzy_set, alpha, x):
-                    return torch.max(fuzzy_set(x) * torch.tensor(alpha), dim=1).values
-                sp = partial(special_fuzzy_set, fuzzy_set, 0.3)
-                sp(torch.rand(100))
-                simpson_method = torchquad.Simpson()
-
-                area = simpson_method.integrate(
-                    sp,
-                    dim=4,
-                    N=101,
-                    integration_domain=[[0, 1]],
-                )
-                results.append(self.area_helper(fuzzy_set, elements))
+                results.append(self.area_helper(fuzzy_set))
             else:
                 simpson_method = torchquad.Simpson()
-                def special_fuzzy_set(fuzzy_set, alpha, x):
-                    return (fuzzy_set(x) * torch.tensor(alpha)).max().reshape(1)
-                sp = partial(special_fuzzy_set, fuzzy_set, 0.3)
                 area = simpson_method.integrate(
-                    sp,
+                    fuzzy_set,
                     dim=1,
                     N=101,
-                    integration_domain=[[0, 1]],
+                    integration_domain=[
+                        [
+                            fuzzy_set.centers.item() - fuzzy_set.widths.item(),
+                            fuzzy_set.centers.item() + fuzzy_set.widths.item()
+                        ]
+                    ],
                 )
                 if fuzzy_set.widths.item() <= 0 and area != 0.0:
                     # if the width of a fuzzy set is negative or zero, it is a special flag that
@@ -168,7 +156,7 @@ class ContinuousFuzzySet(torch.nn.Module):
 
         return results
 
-    def area(self, elements):
+    def area(self):
         """
         Calculate the area beneath the fuzzy curve (i.e., membership function) using torchquad.
 
@@ -180,9 +168,18 @@ class ContinuousFuzzySet(torch.nn.Module):
         Returns:
             torch.Tensor
         """
-        return torch.tensor(self.area_helper(self, elements)).float()
+        return torch.tensor(self.area_helper(self)).float()
 
     def split(self):
+        """
+        Efficient implementation of splitting *this* (self) fuzzy set, where each row contains the
+        fuzzy sets for a fuzzy variable. For example, if we index the result with [0][1], then we
+        would retrieve the second fuzzy (i.e., linguistic) term for the first fuzzy (i.e.,
+        linguistic) variable.
+
+        Returns:
+            numpy.array
+        """
         sets = []
         for center, width in zip(self.centers.flatten(), self.widths.flatten()):
             sets.append(Gaussian(1, center.item(), width.item()))

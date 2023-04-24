@@ -15,6 +15,7 @@ class DiscreteFuzzySet:
     """
     A parent class for all fuzzy sets to inherit. Allows the user to visualize the fuzzy set.
     """
+
     def fetch(self, x):
         """
         Fetch the corresponding formula for the provided x value where x is a(n) int/float.

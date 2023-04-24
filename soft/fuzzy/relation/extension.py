@@ -120,7 +120,9 @@ class AlphaCut(DiscreteFuzzySet):
                 # )
                 interval_1 = sympy.solve(alpha <= formula[0])
                 interval_2 = sympy.solve(formula[0] <= alpha)
-                x_interval = sympy.Intersection(interval_1.as_set(), interval_2.as_set())
+                x_interval = sympy.Intersection(
+                    interval_1.as_set(), interval_2.as_set()
+                )
                 x = x_interval.atoms().pop()
                 if formula[1].contains(x):
                     # the x is within the sympy.Interval, now check the direction
