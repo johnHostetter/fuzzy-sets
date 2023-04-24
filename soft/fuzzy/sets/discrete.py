@@ -15,6 +15,27 @@ class DiscreteFuzzySet:
     """
     A parent class for all fuzzy sets to inherit. Allows the user to visualize the fuzzy set.
     """
+    def fetch(self, x):
+        """
+        Fetch the corresponding formula for the provided x value where x is a(n) int/float.
+
+        Parameters
+        ----------
+        x : 'float'
+            The parameter x is the element from the universe of discourse X.
+
+        Returns
+        -------
+        formula : 'tuple'/'None'
+            Returns the tuple containing the formula and corresponding Interval. Returns
+            None if a formula for the element x could not be found.
+        """
+        for formula in self.formulas:
+            if formula[1].contains(
+                x
+            ):  # check the formula's interval to see if it contains x
+                return formula
+        return None
 
     def graph(self, lower=0, upper=100, samples=100):
         """
@@ -77,28 +98,6 @@ class OrdinaryDiscreteFuzzySet(DiscreteFuzzySet):
         DiscreteFuzzySet.__init__(self)
         self.formulas = formulas
         self.name = name
-
-    def fetch(self, x):
-        """
-        Fetch the corresponding formula for the provided x value where x is a(n) int/float.
-
-        Parameters
-        ----------
-        x : 'float'
-            The parameter x is the element from the universe of discourse X.
-
-        Returns
-        -------
-        formula : 'tuple'/'None'
-            Returns the tuple containing the formula and corresponding Interval. Returns
-            None if a formula for the element x could not be found.
-        """
-        for formula in self.formulas:
-            if formula[1].contains(
-                x
-            ):  # check the formula's interval to see if it contains x
-                return formula
-        return None
 
     def degree(self, x):
         """

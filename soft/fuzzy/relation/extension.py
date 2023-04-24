@@ -1,7 +1,5 @@
 import sympy
 
-from pynverse import inversefunc
-from sympy import lambdify, Symbol, Interval, Union
 from soft.fuzzy.sets.discrete import DiscreteFuzzySet
 
 
@@ -26,10 +24,10 @@ class SpecialFuzzySet(DiscreteFuzzySet):
                 other fuzzy sets in the same space.
         """
         alphaCut = AlphaCut(fuzzyset, alpha)
-        interval = alphaCut.formulas[0][1]
+        sympy.Interval = alphaCut.formulas[0][1]
         for formula in alphaCut.formulas[1:]:
-            interval = Union(interval, formula[1])
-        self.formulas = [(alpha, interval)]
+            sympy.Interval = sympy.Union(sympy.Interval, formula[1])
+        self.formulas = [(alpha, sympy.Interval)]
         self.alpha = alpha
         self.name = name
 
@@ -45,13 +43,13 @@ class SpecialFuzzySet(DiscreteFuzzySet):
         Returns
         -------
         formula : 'tuple'/'None'
-            Returns the tuple containing the formula and corresponding Interval. Returns
+            Returns the tuple containing the formula and corresponding sympy.Interval. Returns
             None if a formula for the element x could not be found.
         """
         for formula in self.formulas:
             if formula[1].contains(
                 x
-            ):  # check the formula's interval to see if it contains x
+            ):  # check the formula's sympy.Interval to see if it contains x
                 return formula
         return None
 
@@ -75,7 +73,7 @@ class SpecialFuzzySet(DiscreteFuzzySet):
         else:
             return 0
         try:
-            y = float(formula.subs(Symbol("x"), x))
+            y = float(formula.subs(sympy.Symbol("x"), x))
         except AttributeError:
             y = formula
         return y
@@ -103,7 +101,7 @@ class AlphaCut(DiscreteFuzzySet):
         ----------
         formulas : 'list'
             A list of 2-tuples. The first element in the tuple at index 0 is the formula
-            equal to f(x) and the second element in the tuple at index 1 is the Interval
+            equal to f(x) and the second element in the tuple at index 1 is the sympy.Interval
             where the formula in the tuple is valid.
         alpha : 'float'
             The alpha value that elements' membership degree must exceed or be equal to.
@@ -117,26 +115,30 @@ class AlphaCut(DiscreteFuzzySet):
         formulas = []
         for formula in fuzzyset.formulas:
             if isinstance(formula[0], sympy.Expr):
-                x = inversefunc(
-                    lambdify(Symbol("x"), formula[0], "numpy"), y_values=alpha
-                )
+                # x = inversefunc(
+                #     lambdify(sympy.Symbol("x"), formula[0], "numpy"), y_values=alpha
+                # )
+                interval_1 = sympy.solve(alpha <= formula[0])
+                interval_2 = sympy.solve(formula[0] <= alpha)
+                x_interval = sympy.Intersection(interval_1.as_set(), interval_2.as_set())
+                x = x_interval.atoms().pop()
                 if formula[1].contains(x):
-                    # the x is within the interval, now check the direction
-                    y = formula[0].subs(Symbol("x"), x - (1e-6))
+                    # the x is within the sympy.Interval, now check the direction
+                    y = formula[0].subs(sympy.Symbol("x"), x - (1e-6))
                     if y >= alpha:
                         # then all values less than or equal to x are valid
                         if formula[1].left_open:
-                            interval = Interval.Lopen(formula[1].inf, x)
+                            sympy.Interval = sympy.Interval.Lopen(formula[1].inf, x)
                         else:
-                            interval = Interval(formula[1].inf, x)
+                            sympy.Interval = sympy.Interval(formula[1].inf, x)
                     else:
                         # then all values greater than or equal to x are valid
                         if formula[1].right_open:
-                            interval = Interval.Ropen(x, formula[1].sup)
+                            sympy.Interval = sympy.Interval.Ropen(x, formula[1].sup)
                         else:
-                            interval = Interval(x, formula[1].sup)
+                            sympy.Interval = sympy.Interval(x, formula[1].sup)
                     formula = list(formula)
-                    formula[1] = interval
+                    formula[1] = sympy.Interval
                     formula = tuple(formula)
                     formulas.append(formula)
             else:
@@ -156,13 +158,13 @@ class AlphaCut(DiscreteFuzzySet):
         Returns
         -------
         formula : 'tuple'/'None'
-            Returns the tuple containing the formula and corresponding interval. Returns
+            Returns the tuple containing the formula and corresponding sympy.Interval. Returns
             None if a formula for the element x could not be found.
         """
         for formula in self.formulas:
             if formula[1].contains(
                 x
-            ):  # check the formula's interval to see if it contains x
+            ):  # check the formula's sympy.Interval to see if it contains x
                 return formula
         return None
 
@@ -186,7 +188,7 @@ class AlphaCut(DiscreteFuzzySet):
         else:
             return 0
         try:
-            y = float(formula.subs(Symbol("x"), x))
+            y = float(formula.subs(sympy.Symbol("x"), x))
         except AttributeError:
             y = formula
         return y

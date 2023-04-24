@@ -44,7 +44,7 @@ class AlgebraicProduct(torch.nn.Module):
     def get_type():
         return "t-norm"
 
-    def forward(self, x):
+    def forward(self, elements):
         """
         Forward pass of the function.
         Applies the function to the input elementwise.
@@ -52,7 +52,7 @@ class AlgebraicProduct(torch.nn.Module):
         self.importance = torch.nn.parameter.Parameter(
             torch.abs(self.importance)
         )  # importance can only be [0, 1]
-        return torch.prod(torch.mul(x, self.importance))
+        return torch.prod(torch.mul(elements, self.importance))
 
 
 class StandardIntersection(DiscreteFuzzySet):
@@ -75,23 +75,24 @@ class StandardIntersection(DiscreteFuzzySet):
         self.fuzzy_sets = fuzzy_sets
         self.name = name
 
-    def degree(self, x):
+    def degree(self, element):
         """
-        Calculates the degree of membership for the provided x value where x is a(n) int/float.
+        Calculates the degree of membership for the provided element value
+        where element is a(n) int/float.
 
         Parameters
         ----------
-        x : 'float'
-            The parameter x is the element from the universe of discourse X.
+        element : 'float'
+            The element is from the universe of discourse.
 
         Returns
         -------
         y : 'float'
-            The degree of membership for element x.
+            The degree of membership for element.
         """
         degrees = []
         for fuzzyset in self.fuzzy_sets:
-            degrees.append(fuzzyset.degree(x))
+            degrees.append(fuzzyset.degree(element))
         return min(degrees)
 
 
