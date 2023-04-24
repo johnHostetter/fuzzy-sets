@@ -32,16 +32,17 @@ class AlgebraicProduct(torch.nn.Module):
             if not isinstance(importance, torch.Tensor):
                 importance = torch.Tensor(importance)
             self.importance = torch.nn.parameter.Parameter(
-                torch.abs(importance))  # importance can only be [0, 1]
+                torch.abs(importance)
+            )  # importance can only be [0, 1]
             self.importance.requires_grad = True
 
     @staticmethod
     def get_name():
-        return 'algebraic product'
+        return "algebraic product"
 
     @staticmethod
     def get_type():
-        return 't-norm'
+        return "t-norm"
 
     def forward(self, x):
         """
@@ -49,7 +50,8 @@ class AlgebraicProduct(torch.nn.Module):
         Applies the function to the input elementwise.
         """
         self.importance = torch.nn.parameter.Parameter(
-            torch.abs(self.importance))  # importance can only be [0, 1]
+            torch.abs(self.importance)
+        )  # importance can only be [0, 1]
         return torch.prod(torch.mul(x, self.importance))
 
 

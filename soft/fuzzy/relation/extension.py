@@ -6,9 +6,9 @@ from soft.fuzzy.sets.discrete import DiscreteFuzzySet
 
 
 class SpecialFuzzySet(DiscreteFuzzySet):
-    """ 
-    The special fuzzy set membership function for a given element x in the universe of 
-    discourse X, is defined as the alpha value multipled by the element x's degree of 
+    """
+    The special fuzzy set membership function for a given element x in the universe of
+    discourse X, is defined as the alpha value multipled by the element x's degree of
     membership within the fuzzy set's alpha cut.
     """
 
@@ -34,14 +34,14 @@ class SpecialFuzzySet(DiscreteFuzzySet):
         self.name = name
 
     def fetch(self, x):
-        """ 
+        """
         Fetch the corresponding formula for the provided x value where x is a(n) int/float.
-        
+
         Parameters
         ----------
         x : 'float'
             The parameter x is the element from the universe of discourse X.
-        
+
         Returns
         -------
         formula : 'tuple'/'None'
@@ -49,19 +49,21 @@ class SpecialFuzzySet(DiscreteFuzzySet):
             None if a formula for the element x could not be found.
         """
         for formula in self.formulas:
-            if formula[1].contains(x):  # check the formula's interval to see if it contains x
+            if formula[1].contains(
+                x
+            ):  # check the formula's interval to see if it contains x
                 return formula
         return None
 
     def degree(self, x):
         """
         Calculates the degree of membership for the provided x value where x is a(n) int/float.
-        
+
         Parameters
         ----------
         x : 'float'
             The parameter x is the element from the universe of discourse X.
-        
+
         Returns
         -------
         y : 'float'
@@ -73,7 +75,7 @@ class SpecialFuzzySet(DiscreteFuzzySet):
         else:
             return 0
         try:
-            y = float(formula.subs(Symbol('x'), x))
+            y = float(formula.subs(Symbol("x"), x))
         except AttributeError:
             y = formula
         return y
@@ -81,7 +83,7 @@ class SpecialFuzzySet(DiscreteFuzzySet):
     def height(self):
         """
         Calculates the height of the special fuzzy set.
-        
+
         Returns
         -------
         height : 'float'
@@ -91,7 +93,7 @@ class SpecialFuzzySet(DiscreteFuzzySet):
 
 
 class AlphaCut(DiscreteFuzzySet):
-    """ 
+    """
     The alpha cut of a fuzzy set yields a crisp set.
     """
 
@@ -100,8 +102,8 @@ class AlphaCut(DiscreteFuzzySet):
         Parameters
         ----------
         formulas : 'list'
-            A list of 2-tuples. The first element in the tuple at index 0 is the formula 
-            equal to f(x) and the second element in the tuple at index 1 is the Interval 
+            A list of 2-tuples. The first element in the tuple at index 0 is the formula
+            equal to f(x) and the second element in the tuple at index 1 is the Interval
             where the formula in the tuple is valid.
         alpha : 'float'
             The alpha value that elements' membership degree must exceed or be equal to.
@@ -115,10 +117,12 @@ class AlphaCut(DiscreteFuzzySet):
         formulas = []
         for formula in fuzzyset.formulas:
             if isinstance(formula[0], sympy.Expr):
-                x = inversefunc(lambdify(Symbol('x'), formula[0], 'numpy'), y_values=alpha)
+                x = inversefunc(
+                    lambdify(Symbol("x"), formula[0], "numpy"), y_values=alpha
+                )
                 if formula[1].contains(x):
                     # the x is within the interval, now check the direction
-                    y = formula[0].subs(Symbol('x'), x - (1e-6))
+                    y = formula[0].subs(Symbol("x"), x - (1e-6))
                     if y >= alpha:
                         # then all values less than or equal to x are valid
                         if formula[1].left_open:
@@ -141,14 +145,14 @@ class AlphaCut(DiscreteFuzzySet):
         self.formulas = formulas
 
     def fetch(self, x):
-        """ 
+        """
         Fetch the corresponding formula for the provided x value where x is a(n) int/float.
-        
+
         Parameters
         ----------
         x : 'float'
             The parameter x is the element from the universe of discourse X.
-        
+
         Returns
         -------
         formula : 'tuple'/'None'
@@ -156,19 +160,21 @@ class AlphaCut(DiscreteFuzzySet):
             None if a formula for the element x could not be found.
         """
         for formula in self.formulas:
-            if formula[1].contains(x):  # check the formula's interval to see if it contains x
+            if formula[1].contains(
+                x
+            ):  # check the formula's interval to see if it contains x
                 return formula
         return None
 
     def degree(self, x):
         """
         Calculates the degree of membership for the provided x value where x is a(n) int/float.
-        
+
         Parameters
         ----------
         x : 'float'
             The parameter x is the element from the universe of discourse X.
-        
+
         Returns
         -------
         y : 'float'
@@ -180,7 +186,7 @@ class AlphaCut(DiscreteFuzzySet):
         else:
             return 0
         try:
-            y = float(formula.subs(Symbol('x'), x))
+            y = float(formula.subs(Symbol("x"), x))
         except AttributeError:
             y = formula
         return y

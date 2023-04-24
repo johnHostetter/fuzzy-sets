@@ -13,6 +13,7 @@ class OrderedWeightedAveraging(torch.nn.Module):
     The weight vector allows us to easily adjust the degree of 'anding' and 'oring'
     implicit in the aggregation.
     """
+
     def __init__(self, in_features, weights):
         super().__init__()
         self.in_features = in_features
@@ -26,7 +27,8 @@ class OrderedWeightedAveraging(torch.nn.Module):
                 self.weights = torch.nn.parameter.Parameter(torch.abs(weights))
             else:
                 raise AttributeError(
-                    "The weight vector of the Ordered Weighted Averaging operator must sum to 1.0.")
+                    "The weight vector of the Ordered Weighted Averaging operator must sum to 1.0."
+                )
 
     def orness(self):
         """
@@ -38,8 +40,10 @@ class OrderedWeightedAveraging(torch.nn.Module):
             The degree to which the Ordered Weighted Averaging operator is an 'or' operator.
         """
         return (1 / (self.in_features - 1)) * torch.tensor(
-            [(self.in_features - i) * self.weights[i - 1]
-             for i in range(1, self.in_features + 1)]
+            [
+                (self.in_features - i) * self.weights[i - 1]
+                for i in range(1, self.in_features + 1)
+            ]
         ).sum()
 
     def dispersion(self):

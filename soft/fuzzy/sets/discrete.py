@@ -94,7 +94,9 @@ class OrdinaryDiscreteFuzzySet(DiscreteFuzzySet):
             None if a formula for the element x could not be found.
         """
         for formula in self.formulas:
-            if formula[1].contains(x):  # check the formula's interval to see if it contains x
+            if formula[1].contains(
+                x
+            ):  # check the formula's interval to see if it contains x
                 return formula
         return None
 
@@ -114,7 +116,7 @@ class OrdinaryDiscreteFuzzySet(DiscreteFuzzySet):
         """
         formula = self.fetch(x)[0]
         try:
-            y = float(formula.subs(Symbol('x'), x))
+            y = float(formula.subs(Symbol("x"), x))
         except AttributeError:
             y = formula
         return y
@@ -137,8 +139,8 @@ class OrdinaryDiscreteFuzzySet(DiscreteFuzzySet):
                     inf_x += 1e-8
                 if formula[1].right_open:
                     sup_x -= 1e-8
-                inf_y = formula[0].subs(Symbol('x'), inf_x)
-                sup_y = formula[0].subs(Symbol('x'), sup_x)
+                inf_y = formula[0].subs(Symbol("x"), inf_x)
+                sup_y = formula[0].subs(Symbol("x"), sup_x)
                 heights.append(inf_y)
                 heights.append(sup_y)
             else:
@@ -201,7 +203,14 @@ class FuzzyVariable(DiscreteFuzzySet):
             y_list = []
             for x in x_list:
                 y_list.append(fuzzy_set.degree(x))
-            plt.plot(x_list, y_list, color=np.random.rand(3, ), label=fuzzy_set.name)
+            plt.plot(
+                x_list,
+                y_list,
+                color=np.random.rand(
+                    3,
+                ),
+                label=fuzzy_set.name,
+            )
 
         if self.name is not None:
             plt.title("{self.name} Fuzzy Variable")

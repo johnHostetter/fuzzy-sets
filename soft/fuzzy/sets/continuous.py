@@ -20,7 +20,9 @@ class ContinuousFuzzySet(torch.nn.Module):
 
         # initialize centers
         if centers is None:
-            self.centers = torch.nn.parameter.Parameter(torch.randn(self.in_features)).float()
+            self.centers = torch.nn.parameter.Parameter(
+                torch.randn(self.in_features)
+            ).float()
         else:
             if not isinstance(centers, torch.Tensor):
                 centers = torch.tensor(np.array(centers)).float()
@@ -126,19 +128,26 @@ class ContinuousFuzzySet(torch.nn.Module):
         results = []
         for params in zip(fuzzy_sets.centers, fuzzy_sets.widths):
             centers, widths = params[0], params[1]
-            fuzzy_set = self.__class__(in_features=centers.ndim, centers=centers, widths=widths)
+            fuzzy_set = self.__class__(
+                in_features=centers.ndim, centers=centers, widths=widths
+            )
 
             if centers.ndim > 0:
                 results.append(self.area_helper(fuzzy_set))
             else:
                 simpson_method = torchquad.Simpson()
                 area = simpson_method.integrate(
-                    fuzzy_set, dim=1, N=101, integration_domain=[
-                        [fuzzy_set.centers.item() - fuzzy_set.widths.item(),
-                         fuzzy_set.centers.item() + fuzzy_set.widths.item()]
-                    ]
+                    fuzzy_set,
+                    dim=1,
+                    N=101,
+                    integration_domain=[
+                        [
+                            fuzzy_set.centers.item() - fuzzy_set.widths.item(),
+                            fuzzy_set.centers.item() + fuzzy_set.widths.item(),
+                        ]
+                    ],
                 ).item()
-                if fuzzy_set.widths.item() <= 0 and area != 0.:
+                if fuzzy_set.widths.item() <= 0 and area != 0.0:
                     # if the width of a fuzzy set is negative or zero, it is a special flag that
                     # the fuzzy set does not exist; thus, the calculated area of a fuzzy set w/ a
                     # width <= 0 should be zero. However, in the case this does not occur,
@@ -176,13 +185,16 @@ class ContinuousFuzzySet(torch.nn.Module):
         Returns:
             None
         """
-        raise NotImplementedError('The Base Fuzzy Set has no membership function defined.')
+        raise NotImplementedError(
+            "The Base Fuzzy Set has no membership function defined."
+        )
 
 
 class Gaussian(ContinuousFuzzySet):
     """
     Implementation of the Gaussian membership function, written in PyTorch.
     """
+
     @property
     def sigmas(self):
         """
@@ -217,15 +229,23 @@ class Gaussian(ContinuousFuzzySet):
         """
         if not isinstance(observations, torch.Tensor):
             observations = torch.tensor(np.array(observations))
-        return torch.exp(
-            -1.0 * (torch.pow(observations.unsqueeze(dim=-1) - self.centers, 2) / torch.pow(
-                torch.log(self._log_widths), 2))) * self.mask
+        return (
+            torch.exp(
+                -1.0
+                * (
+                    torch.pow(observations.unsqueeze(dim=-1) - self.centers, 2)
+                    / torch.pow(torch.log(self._log_widths), 2)
+                )
+            )
+            * self.mask
+        )
 
 
 class Triangular(ContinuousFuzzySet):
     """
     Implementation of the Triangular membership function, written in PyTorch.
     """
+
     def forward(self, observations):
         """
         Forward pass of the function. Applies the function to the input elementwise.
@@ -238,7 +258,15 @@ class Triangular(ContinuousFuzzySet):
         Returns:
             The membership degrees of the observations for the Triangular fuzzy set.
         """
-        return torch.max(1.0 - (1.0 / torch.log(
-            self._log_widths)) * torch.abs(
-            self.convert_to_tensor(
-                observations).unsqueeze(dim=-1) - self.centers), torch.tensor(0.0)) * self.mask
+        return (
+            torch.max(
+                1.0
+                - (1.0 / torch.log(self._log_widths))
+                * torch.abs(
+                    self.convert_to_tensor(observations).unsqueeze(dim=-1)
+                    - self.centers
+                ),
+                torch.tensor(0.0),
+            )
+            * self.mask
+        )
