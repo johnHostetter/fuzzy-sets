@@ -142,7 +142,7 @@ class ContinuousFuzzySet(torch.nn.Module):
                     integration_domain=[
                         [
                             fuzzy_set.centers.item() - fuzzy_set.widths.item(),
-                            fuzzy_set.centers.item() + fuzzy_set.widths.item()
+                            fuzzy_set.centers.item() + fuzzy_set.widths.item(),
                         ]
                     ],
                 )
