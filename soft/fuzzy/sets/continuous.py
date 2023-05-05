@@ -243,6 +243,10 @@ class Gaussian(ContinuousFuzzySet):
         """
         if not isinstance(observations, torch.Tensor):
             observations = torch.tensor(np.array(observations))
+
+        if torch.cuda.is_available():
+            observations = observations.to(torch.cuda.current_device())
+
         return (
             torch.exp(
                 -1.0
