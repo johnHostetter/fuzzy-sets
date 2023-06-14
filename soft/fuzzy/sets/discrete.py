@@ -1,6 +1,8 @@
 """
 Implements the discrete fuzzy sets.
 """
+from typing import Union
+
 import sympy
 import numpy as np
 from sympy import Symbol
@@ -16,27 +18,26 @@ class DiscreteFuzzySet:
     A parent class for all fuzzy sets to inherit. Allows the user to visualize the fuzzy set.
     """
 
-    def fetch(self, x):
+    def fetch(self, element: Union[int, float]):
         """
-        Fetch the corresponding formula for the provided x value where x is a(n) int/float.
+        Fetch the corresponding formula for the provided element where element is a(n) int/float.
 
         Parameters
         ----------
-        x : 'float'
-            The parameter x is the element from the universe of discourse X.
+        element : 'float'
+            The element is from the universe of discourse X.
 
         Returns
         -------
         formula : 'tuple'/'None'
-            Returns the tuple containing the formula and corresponding Interval. Returns
-            None if a formula for the element x could not be found.
+            Returns the tuple containing the formula and corresponding Interval.
+            Returns None if a formula for the element could not be found.
         """
         for formula in self.formulas:
             if formula[1].contains(
-                x
-            ):  # check the formula's interval to see if it contains x
+                element
+            ):  # check the formula's interval to see if it contains element
                 return formula
-        return None
 
     def graph(self, lower=0, upper=100, samples=100):
         """
@@ -45,18 +46,18 @@ class DiscreteFuzzySet:
         Parameters
         ----------
         lower : 'float', optional
-            Default value is 0. Specifies the infimum x value for the graph.
+            Default value is 0. Specifies the infimum value for the graph.
         upper : 'float', optional
-            Default value is 100. Specifies the supremum x value for the graph.
+            Default value is 100. Specifies the supremum value for the graph.
         samples : 'int', optional
-            Default value is 100. Specifies the number of x values to test in the domain
+            Default value is 100. Specifies the number of values to test in the domain
             to approximate the graph. A higher sample value will yield a higher resolution
             of the graph, but large values will lead to performance issues.
         """
         x_list = np.linspace(lower, upper, samples)
         y_list = []
-        for x in x_list:
-            y_list.append(self.degree(x))
+        for x_value in x_list:
+            y_list.append(self.degree(x_value))
         if self.name is not None:
             plt.title(f"{self.name} Fuzzy Set")
         else:
@@ -100,26 +101,26 @@ class OrdinaryDiscreteFuzzySet(DiscreteFuzzySet):
         self.formulas = formulas
         self.name = name
 
-    def degree(self, x):
+    def degree(self, element: Union[int, float]):
         """
-        Calculates the degree of membership for the provided x value where x is a(n) int/float.
+        Calculates degree of membership for the provided element where element is a(n) int/float.
 
         Parameters
         ----------
-        x : 'float'
-            The parameter x is the element from the universe of discourse X.
+        element : 'float'
+            The element is from the universe of discourse X.
 
         Returns
         -------
-        y : 'float'
-            The degree of membership for element x.
+        mu : 'float'
+            The degree of membership for the element.
         """
-        formula = self.fetch(x)[0]
+        formula = self.fetch(element)[0]
         try:
-            y = float(formula.subs(Symbol("x"), x))
+            membership = float(formula.subs(Symbol("x"), element))
         except AttributeError:
-            y = formula
-        return y
+            membership = formula
+        return membership
 
     def height(self):
         """
@@ -189,9 +190,9 @@ class FuzzyVariable(DiscreteFuzzySet):
         Graphs the fuzzy set in the universe of elements.
 
         Args:
-            lower: Default value is 0. Specifies the infimum x value for the graph.
-            upper: Default value is 100. Specifies the supremum x value for the graph.
-            samples: Default value is 100. Specifies the number of x values to test in the domain
+            lower: Default value is 0. Specifies the infimum value for the graph.
+            upper: Default value is 100. Specifies the supremum value for the graph.
+            samples: Default value is 100. Specifies the number of values to test in the domain
             to approximate the graph. A higher sample value will yield a higher resolution
             of the graph, but large values will lead to performance issues.
 
@@ -201,8 +202,8 @@ class FuzzyVariable(DiscreteFuzzySet):
         for fuzzy_set in self.fuzzy_sets:
             x_list = np.linspace(lower, upper, samples)
             y_list = []
-            for x in x_list:
-                y_list.append(fuzzy_set.degree(x))
+            for x_value in x_list:
+                y_list.append(fuzzy_set.degree(x_value))
             plt.plot(
                 x_list,
                 y_list,

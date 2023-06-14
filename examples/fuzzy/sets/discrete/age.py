@@ -5,7 +5,7 @@ from sympy import Symbol, Interval, oo  # oo is infinity
 
 from soft.fuzzy.relation.snorm import StandardUnion
 from soft.fuzzy.relation.tnorm import StandardIntersection
-from soft.fuzzy.relation.complement import StandardComplement
+from soft.fuzzy.relation.complement import standard_complement
 from soft.fuzzy.sets.discrete import OrdinaryDiscreteFuzzySet, FuzzyVariable
 
 
@@ -57,12 +57,12 @@ b.graph(0, 80)
 c = StandardIntersection([a2, a3], "C")
 c.graph(0, 80)
 StandardUnion([b, c], "B Union C").graph(0, 80)
-StandardComplement(a1)
+standard_complement(a1)
 a1.graph(0, 80)
-StandardComplement(a3)
+standard_complement(a3)
 a3.graph(0, 80)
 StandardIntersection([a1, a3], "Not(A1) Intersection Not(A3)").graph(0, 80)
-StandardComplement(a1)
-StandardComplement(a3)
+standard_complement(a1)
+standard_complement(a3)
 # doesn't work yet
 # StandardComplement(StandardUnion([b, c], 'Not (B Union C)')).graph(0, 80)

@@ -4,7 +4,7 @@ Implements the various fuzzy complement definitions for the discrete fuzzy sets.
 from soft.fuzzy.sets.discrete import DiscreteFuzzySet
 
 
-def StandardComplement(fuzzySet):
+def standard_complement(fuzzy_set):
     """
     Obtains the standard complement of a fuzzy set as defined by Lotfi A. Zadeh.
 
@@ -12,20 +12,20 @@ def StandardComplement(fuzzySet):
 
     Parameters
     ----------
-    fuzzySet : 'OrdinaryDiscreteFuzzySet'
+    fuzzy_set : 'OrdinaryDiscreteFuzzySet'
 
     Returns
     -------
     success : 'bool'
     """
 
-    if isinstance(fuzzySet, DiscreteFuzzySet):
+    if isinstance(fuzzy_set, DiscreteFuzzySet):
         formulas = []
-        for formula in fuzzySet.formulas:
+        for formula in fuzzy_set.formulas:
             formula = list(formula)
             formula[0] = 1 - formula[0]
             formula = tuple(formula)
             formulas.append(formula)
-        fuzzySet.formulas = formulas
+        fuzzy_set.formulas = formulas
         return True
     return False

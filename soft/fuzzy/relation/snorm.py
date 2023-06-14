@@ -1,3 +1,9 @@
+"""
+Implements the s-norm fuzzy relations.
+"""
+
+from typing import Union
+
 from soft.fuzzy.sets.discrete import DiscreteFuzzySet
 
 
@@ -21,21 +27,18 @@ class StandardUnion(DiscreteFuzzySet):
         self.fuzzysets = fuzzysets
         self.name = name
 
-    def degree(self, x):
+    def degree(self, element: Union[int, float]):
         """
-        Calculates the degree of membership for the provided x value where x is a(n) int/float.
+        Calculates the degree of membership for the provided element value
+        where element is a(n) int/float.
 
-        Parameters
-        ----------
-        x : 'float'
-            The parameter x is the element from the universe of discourse X.
+        Args:
+            element: The element is from the universe of discourse X.
 
-        Returns
-        -------
-        y : 'float'
-            The degree of membership for element x.
+        Returns:
+            The degree of membership for the element.
         """
         degrees = []
         for fuzzyset in self.fuzzysets:
-            degrees.append(fuzzyset.degree(x))
+            degrees.append(fuzzyset.degree(element))
         return max(degrees)

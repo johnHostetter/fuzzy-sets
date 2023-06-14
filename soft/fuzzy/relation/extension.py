@@ -23,60 +23,60 @@ class SpecialFuzzySet(DiscreteFuzzySet):
                 This feature is useful when visualizing the fuzzy set, and its interaction with
                 other fuzzy sets in the same space.
         """
-        alphaCut = AlphaCut(fuzzyset, alpha)
-        sympy.Interval = alphaCut.formulas[0][1]
-        for formula in alphaCut.formulas[1:]:
+        alpha_cut = AlphaCut(fuzzyset, alpha)
+        sympy.Interval = alpha_cut.formulas[0][1]
+        for formula in alpha_cut.formulas[1:]:
             sympy.Interval = sympy.Union(sympy.Interval, formula[1])
         self.formulas = [(alpha, sympy.Interval)]
         self.alpha = alpha
         self.name = name
 
-    def fetch(self, x):
+    def fetch(self, element):
         """
-        Fetch the corresponding formula for the provided x value where x is a(n) int/float.
+        Fetch the corresponding formula for the provided element where element is a(n) int/float.
 
         Parameters
         ----------
-        x : 'float'
-            The parameter x is the element from the universe of discourse X.
+        element : 'float'
+            The element is from the universe of discourse X.
 
         Returns
         -------
         formula : 'tuple'/'None'
             Returns the tuple containing the formula and corresponding sympy.Interval. Returns
-            None if a formula for the element x could not be found.
+            None if a formula for the element could not be found.
         """
         for formula in self.formulas:
             if formula[1].contains(
-                x
+                element
             ):  # check the formula's sympy.Interval to see if it contains x
                 return formula
         return None
 
-    def degree(self, x):
+    def degree(self, element):
         """
-        Calculates the degree of membership for the provided x value where x is a(n) int/float.
+        Calculates degree of membership for the provided 'element' where element is a(n) int/float.
 
         Parameters
         ----------
-        x : 'float'
-            The parameter x is the element from the universe of discourse X.
+        element : 'float'
+            The element is from the universe of discourse X.
 
         Returns
         -------
-        y : 'float'
-            The degree of membership for element x.
+        membership : 'float'
+            The degree of membership for the element.
         """
-        result = self.fetch(x)
+        result = self.fetch(element)
         if result is not None:
             formula = result[0]
         else:
             return 0
         try:
-            y = float(formula.subs(sympy.Symbol("x"), x))
+            membership = float(formula.subs(sympy.Symbol("x"), element))
         except AttributeError:
-            y = formula
-        return y
+            membership = formula
+        return membership
 
     def height(self):
         """
@@ -123,22 +123,22 @@ class AlphaCut(DiscreteFuzzySet):
                 x_interval = sympy.Intersection(
                     interval_1.as_set(), interval_2.as_set()
                 )
-                x = x_interval.atoms().pop()
-                if formula[1].contains(x):
-                    # the x is within the sympy.Interval, now check the direction
-                    y = formula[0].subs(sympy.Symbol("x"), x - (1e-6))
-                    if y >= alpha:
-                        # then all values less than or equal to x are valid
+                element = x_interval.atoms().pop()
+                if formula[1].contains(element):
+                    # the element is within the sympy.Interval, now check the direction
+                    membership = formula[0].subs(sympy.Symbol("x"), element - (1e-6))
+                    if membership >= alpha:
+                        # then all values less than or equal to element are valid
                         if formula[1].left_open:
-                            sympy.Interval = sympy.Interval.Lopen(formula[1].inf, x)
+                            sympy.Interval = sympy.Interval.Lopen(formula[1].inf, element)
                         else:
-                            sympy.Interval = sympy.Interval(formula[1].inf, x)
+                            sympy.Interval = sympy.Interval(formula[1].inf, element)
                     else:
-                        # then all values greater than or equal to x are valid
+                        # then all values greater than or equal to element are valid
                         if formula[1].right_open:
-                            sympy.Interval = sympy.Interval.Ropen(x, formula[1].sup)
+                            sympy.Interval = sympy.Interval.Ropen(element, formula[1].sup)
                         else:
-                            sympy.Interval = sympy.Interval(x, formula[1].sup)
+                            sympy.Interval = sympy.Interval(element, formula[1].sup)
                     formula = list(formula)
                     formula[1] = sympy.Interval
                     formula = tuple(formula)
@@ -148,49 +148,49 @@ class AlphaCut(DiscreteFuzzySet):
                     formulas.append(formula)
         self.formulas = formulas
 
-    def fetch(self, x):
+    def fetch(self, element):
         """
-        Fetch the corresponding formula for the provided x value where x is a(n) int/float.
+        Fetch the corresponding formula for the provided 'element' where element is a(n) int/float.
 
         Parameters
         ----------
-        x : 'float'
-            The parameter x is the element from the universe of discourse X.
+        element : 'float'
+            The element is from the universe of discourse X.
 
         Returns
         -------
         formula : 'tuple'/'None'
             Returns the tuple containing the formula and corresponding sympy.Interval. Returns
-            None if a formula for the element x could not be found.
+            None if a formula for the element could not be found.
         """
         for formula in self.formulas:
             if formula[1].contains(
-                x
-            ):  # check the formula's sympy.Interval to see if it contains x
+                element
+            ):  # check the formula's sympy.Interval to see if it contains the element
                 return formula
         return None
 
-    def degree(self, x):
+    def degree(self, element):
         """
-        Calculates the degree of membership for the provided x value where x is a(n) int/float.
+        Calculates degree of membership for the provided 'element' where element is a(n) int/float.
 
         Parameters
         ----------
-        x : 'float'
-            The parameter x is the element from the universe of discourse X.
+        element : 'float'
+            The element is from the universe of discourse X.
 
         Returns
         -------
-        y : 'float'
-            The degree of membership for element x.
+        membership : 'float'
+            The degree of membership for the element.
         """
-        result = self.fetch(x)
+        result = self.fetch(element)
         if result is not None:
             formula = result[0]
         else:
             return 0
         try:
-            y = float(formula.subs(sympy.Symbol("x"), x))
+            membership = float(formula.subs(sympy.Symbol("x"), element))
         except AttributeError:
-            y = formula
-        return y
+            membership = formula
+        return membership
