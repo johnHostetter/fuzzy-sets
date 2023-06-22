@@ -1,3 +1,6 @@
+"""
+Implementation of the special fuzzy set and the alpha cut operation for discrete fuzzy sets.
+"""
 import sympy
 
 from soft.fuzzy.sets.discrete import DiscreteFuzzySet

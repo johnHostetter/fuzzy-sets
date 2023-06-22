@@ -38,6 +38,7 @@ class DiscreteFuzzySet:
                 element
             ):  # check the formula's interval to see if it contains element
                 return formula
+        return None
 
     def graph(self, lower=0, upper=100, samples=100):
         """
