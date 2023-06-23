@@ -85,6 +85,7 @@ class StandardIntersection(DiscreteFuzzySet):
 
 
 class Minimum:
+    # pylint: disable=too-few-public-methods
     """
     A placeholder class for operations expecting the minimum t-norm.
     """
