@@ -133,13 +133,17 @@ class AlphaCut(DiscreteFuzzySet):
                     if membership >= alpha:
                         # then all values less than or equal to element are valid
                         if formula[1].left_open:
-                            sympy.Interval = sympy.Interval.Lopen(formula[1].inf, element)
+                            sympy.Interval = sympy.Interval.Lopen(
+                                formula[1].inf, element
+                            )
                         else:
                             sympy.Interval = sympy.Interval(formula[1].inf, element)
                     else:
                         # then all values greater than or equal to element are valid
                         if formula[1].right_open:
-                            sympy.Interval = sympy.Interval.Ropen(element, formula[1].sup)
+                            sympy.Interval = sympy.Interval.Ropen(
+                                element, formula[1].sup
+                            )
                         else:
                             sympy.Interval = sympy.Interval(element, formula[1].sup)
                     formula = list(formula)

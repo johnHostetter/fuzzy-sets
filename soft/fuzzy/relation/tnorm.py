@@ -89,5 +89,6 @@ class Minimum:
     """
     A placeholder class for operations expecting the minimum t-norm.
     """
+
     def __init__(self):
         pass
