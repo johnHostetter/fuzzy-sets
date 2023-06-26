@@ -1,9 +1,11 @@
 """
 Implementation of the special fuzzy set and the alpha cut operation for discrete fuzzy sets.
 """
+from typing import List, Union, Callable
+
 import sympy
 
-from soft.fuzzy.sets.discrete import DiscreteFuzzySet
+from soft.fuzzy.sets.discrete import DiscreteFuzzySet, OrdinaryDiscreteFuzzySet
 
 
 class SpecialFuzzySet(DiscreteFuzzySet):
@@ -30,31 +32,8 @@ class SpecialFuzzySet(DiscreteFuzzySet):
         sympy.Interval = alpha_cut.formulas[0][1]
         for formula in alpha_cut.formulas[1:]:
             sympy.Interval = sympy.Union(sympy.Interval, formula[1])
-        self.formulas = [(alpha, sympy.Interval)]
+        DiscreteFuzzySet.__init__(self, formulas=[(alpha, sympy.Interval)], name=name)
         self.alpha = alpha
-        self.name = name
-
-    def fetch(self, element):
-        """
-        Fetch the corresponding formula for the provided element where element is a(n) int/float.
-
-        Parameters
-        ----------
-        element : 'float'
-            The element is from the universe of discourse X.
-
-        Returns
-        -------
-        formula : 'tuple'/'None'
-            Returns the tuple containing the formula and corresponding sympy.Interval. Returns
-            None if a formula for the element could not be found.
-        """
-        for formula in self.formulas:
-            if formula[1].contains(
-                element
-            ):  # check the formula's sympy.Interval to see if it contains x
-                return formula
-        return None
 
     def degree(self, element):
         """
@@ -114,7 +93,6 @@ class AlphaCut(DiscreteFuzzySet):
             other fuzzy sets in the same space.
         """
         self.alpha = alpha
-        self.name = name
         formulas = []
         for formula in fuzzyset.formulas:
             if isinstance(formula[0], sympy.Expr):
@@ -153,29 +131,7 @@ class AlphaCut(DiscreteFuzzySet):
             else:
                 if formula[0] >= alpha:
                     formulas.append(formula)
-        self.formulas = formulas
-
-    def fetch(self, element):
-        """
-        Fetch the corresponding formula for the provided 'element' where element is a(n) int/float.
-
-        Parameters
-        ----------
-        element : 'float'
-            The element is from the universe of discourse X.
-
-        Returns
-        -------
-        formula : 'tuple'/'None'
-            Returns the tuple containing the formula and corresponding sympy.Interval. Returns
-            None if a formula for the element could not be found.
-        """
-        for formula in self.formulas:
-            if formula[1].contains(
-                element
-            ):  # check the formula's sympy.Interval to see if it contains the element
-                return formula
-        return None
+        DiscreteFuzzySet.__init__(self, formulas=formulas, name=name)
 
     def degree(self, element):
         """
@@ -201,3 +157,42 @@ class AlphaCut(DiscreteFuzzySet):
         except AttributeError:
             membership = formula
         return membership
+
+
+class DiscreteFuzzyRelation(DiscreteFuzzySet):
+    """
+    A fuzzy relation is a fuzzy set of ordered pairs. This class is a subclass of DiscreteFuzzySet.
+    The DiscreteFuzzyRelation class is used to represent a fuzzy relation between two universes of
+    discourse. More specifically, the DiscreteFuzzyRelation class is used to represent a fuzzy
+    relation such as t-norm or s-norm discrete fuzzy relations.
+    """
+
+    def __init__(self, formulas: List[OrdinaryDiscreteFuzzySet], name=None):
+        """
+        Parameters
+        ----------
+        formulas : 'list'
+            A list of elements each of type OrdinaryDiscreteFuzzySet.
+        name : 'str'/'None'
+            Default value is None. Allows the user to specify the name of the fuzzy set.
+            This feature is useful when visualizing the fuzzy set, and its interaction with
+            other fuzzy fets in the same space.
+        """
+        DiscreteFuzzySet.__init__(self, formulas=formulas, name=name)
+
+    def degree(self, element: Union[int, float], mode: Callable = min):
+        """
+        Calculates the degree of membership for the provided element value
+        where element is a(n) int/float.
+
+        Args:
+            element: The element is from the universe of discourse X.
+            mode: The mode of the degree of membership; the default is min.
+
+        Returns:
+            The degree of membership for the element.
+        """
+        degrees = []
+        for formula in self.formulas:
+            degrees.append(formula.degree(element))
+        return mode(degrees)

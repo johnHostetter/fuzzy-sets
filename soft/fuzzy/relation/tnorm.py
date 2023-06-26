@@ -1,10 +1,12 @@
 """
 Implements the t-norm fuzzy relations.
 """
+from typing import List
 
 import torch
 
-from soft.fuzzy.sets.discrete import DiscreteFuzzySet
+from soft.fuzzy.sets.discrete import OrdinaryDiscreteFuzzySet
+from soft.fuzzy.relation.extension import DiscreteFuzzyRelation
 
 
 class AlgebraicProduct(torch.nn.Module):
@@ -47,41 +49,23 @@ class AlgebraicProduct(torch.nn.Module):
         return torch.prod(torch.mul(elements, self.importance))
 
 
-class StandardIntersection(DiscreteFuzzySet):
+class StandardIntersection(DiscreteFuzzyRelation):
     """
     A standard intersection of one or more ordinary fuzzy sets.
     """
 
-    def __init__(self, fuzzy_sets, name=None):
+    def __init__(self, formulas: List[OrdinaryDiscreteFuzzySet], name=None):
         """
         Parameters
         ----------
-        fuzzy_sets : 'list'
-            A list of elements each of type OrdinaryFuzzySet.
+        formulas : 'list'
+            A list of elements each of type OrdinaryDiscreteFuzzySet.
         name : 'str'/'None'
             Default value is None. Allows the user to specify the name of the fuzzy set.
             This feature is useful when visualizing the fuzzy set, and its interaction with
             other fuzzy fets in the same space.
         """
-        DiscreteFuzzySet.__init__(self)
-        self.fuzzy_sets = fuzzy_sets
-        self.name = name
-
-    def degree(self, element):
-        """
-        Calculates the degree of membership for the provided element value
-        where element is a(n) int/float.
-
-        Args:
-            element: The element is from the universe of discourse X.
-
-        Returns:
-            The degree of membership for the element.
-        """
-        degrees = []
-        for fuzzyset in self.fuzzy_sets:
-            degrees.append(fuzzyset.degree(element))
-        return min(degrees)
+        DiscreteFuzzyRelation.__init__(self, formulas=formulas, name=name)
 
 
 class Minimum:

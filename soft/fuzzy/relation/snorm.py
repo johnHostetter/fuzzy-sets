@@ -2,43 +2,41 @@
 Implements the s-norm fuzzy relations.
 """
 
-from typing import Union
+from typing import Union, List, Callable
 
-from soft.fuzzy.sets.discrete import DiscreteFuzzySet
+from soft.fuzzy.sets.discrete import OrdinaryDiscreteFuzzySet
+from soft.fuzzy.relation.extension import DiscreteFuzzyRelation
 
 
-class StandardUnion(DiscreteFuzzySet):
+class StandardUnion(DiscreteFuzzyRelation):
     """
     A standard union of one or more ordinary fuzzy sets.
     """
 
-    def __init__(self, fuzzysets, name=None):
+    def __init__(self, fuzzy_sets: List[OrdinaryDiscreteFuzzySet], name=None):
         """
         Parameters
         ----------
-        fuzzySets : 'list'
-            A list of elements each of type OrdinaryFuzzySet.
+        formulas : 'list'
+            A list of elements each of type OrdinaryDiscreteFuzzySet.
         name : 'str'/'None'
             Default value is None. Allows the user to specify the name of the fuzzy set.
             This feature is useful when visualizing the fuzzy set, and its interaction with
             other fuzzy fets in the same space.
         """
-        DiscreteFuzzySet.__init__(self)
-        self.fuzzysets = fuzzysets
-        self.name = name
+        DiscreteFuzzyRelation.__init__(self, formulas=fuzzy_sets, name=name)
+        self.fuzzy_sets = fuzzy_sets
 
-    def degree(self, element: Union[int, float]):
+    def degree(self, element: Union[int, float], mode: Callable = max):
         """
         Calculates the degree of membership for the provided element value
         where element is a(n) int/float.
 
         Args:
             element: The element is from the universe of discourse X.
+            mode: The mode of the degree of membership; the default is max.
 
         Returns:
             The degree of membership for the element.
         """
-        degrees = []
-        for fuzzyset in self.fuzzysets:
-            degrees.append(fuzzyset.degree(element))
-        return max(degrees)
+        return self.degree(element, mode)

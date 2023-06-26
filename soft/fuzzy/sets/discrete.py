@@ -1,12 +1,13 @@
 """
 Implements the discrete fuzzy sets.
 """
-from typing import Union
+from typing import Union, List
 
 import sympy
 import numpy as np
 from sympy import Symbol
 import matplotlib.pyplot as plt
+
 
 # https://docs.sympy.org/latest/modules/integrals/integrals.html
 # https://docs.sympy.org/latest/modules/sets.html
@@ -17,6 +18,10 @@ class DiscreteFuzzySet:
     """
     A parent class for all fuzzy sets to inherit. Allows the user to visualize the fuzzy set.
     """
+
+    def __init__(self, formulas, name):
+        self.formulas = formulas
+        self.name = name
 
     def fetch(self, element: Union[int, float]):
         """
@@ -40,7 +45,19 @@ class DiscreteFuzzySet:
                 return formula
         return None
 
-    def graph(self, lower=0, upper=100, samples=100):
+    def degree(self, element: Union[int, float]):
+        """
+        Calculates degree of membership for the provided "element" where element is a(n) int/float.
+
+        Args:
+            element: The element is from the universe of discourse.
+
+        Returns:
+            The degree of membership for the element.
+        """
+        raise NotImplementedError("degree() method must be implemented by child class.")
+
+    def graph(self, lower: float = 0, upper: float = 100, samples: int = 100):
         """
         Graphs the fuzzy set in the universe of elements.
 
@@ -78,7 +95,7 @@ class OrdinaryDiscreteFuzzySet(DiscreteFuzzySet):
     An ordinary fuzzy set that is of type 1 and level 1.
     """
 
-    def __init__(self, formulas, name=None):
+    def __init__(self, formulas: List[tuple], name: str = None):
         """
         Parameters
         ----------
@@ -98,9 +115,7 @@ class OrdinaryDiscreteFuzzySet(DiscreteFuzzySet):
             This feature is useful when visualizing the fuzzy set, and its interaction with
             other fuzzy sets in the same space.
         """
-        DiscreteFuzzySet.__init__(self)
-        self.formulas = formulas
-        self.name = name
+        DiscreteFuzzySet.__init__(self, formulas, name)
 
     def degree(self, element: Union[int, float]):
         """
@@ -155,22 +170,21 @@ class FuzzyVariable(DiscreteFuzzySet):
     A fuzzy variable, or linguistic variable, that contains fuzzy sets.
     """
 
-    def __init__(self, fuzzy_sets, name=None):
+    def __init__(self, fuzzy_sets: List[OrdinaryDiscreteFuzzySet], name=None):
         """
         Parameters
         ----------
         fuzzy_sets : 'list'
-            A list of elements each of type OrdinaryFuzzySet.
+            A list of elements each of type OrdinaryDiscreteFuzzySet.
         name : 'str'/'None'
             Default value is None. Allows the user to specify the name of the fuzzy set.
             This feature is useful when visualizing the fuzzy set, and its interaction with
             other fuzzy sets in the same space.
         """
-        DiscreteFuzzySet.__init__(self)
+        DiscreteFuzzySet.__init__(self, fuzzy_sets, name)
         self.fuzzy_sets = fuzzy_sets
-        self.name = name
 
-    def degree(self, element):
+    def degree(self, element: Union[int, float]) -> tuple:
         """
         Calculates the degree of membership for the provided element value
         where element is a(n) int/float.
@@ -182,11 +196,11 @@ class FuzzyVariable(DiscreteFuzzySet):
             The degree of membership for the element.
         """
         degrees = []
-        for fuzzy_set in self.fuzzy_sets:
+        for fuzzy_set in self.formulas:
             degrees.append(fuzzy_set.degree(element))
         return tuple(degrees)
 
-    def graph(self, lower=0, upper=100, samples=100):
+    def graph(self, lower: float = 0, upper: float = 100, samples: int = 100):
         """
         Graphs the fuzzy set in the universe of elements.
 
@@ -215,7 +229,7 @@ class FuzzyVariable(DiscreteFuzzySet):
             )
 
         if self.name is not None:
-            plt.title("{self.name} Fuzzy Variable")
+            plt.title(f"{self.name} Fuzzy Variable")
         else:
             plt.title("Unnamed Fuzzy Variable")
 
