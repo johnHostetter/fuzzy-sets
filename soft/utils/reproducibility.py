@@ -48,9 +48,19 @@ def env_seed(env, seed: int) -> None:
     env.action_space.seed(seed)
 
 
+def path_to_project_root() -> pathlib.Path:
+    """
+    Return the path to the root of the project.
+
+    Returns:
+        The path to the root of the project.
+    """
+    return pathlib.Path(__file__).parent.parent.parent
+
+
 def load_configuration(
     file_name: Union[str, pathlib.Path] = "default_config.yaml",
-    convert_data_types: bool = True
+    convert_data_types: bool = True,
 ) -> Config:
     """
     Load and return the default configuration that should be used for models, if another
@@ -67,7 +77,7 @@ def load_configuration(
     Returns:
         The configuration settings.
     """
-    file_path = pathlib.Path(__file__).parent.parent.parent / file_name
+    file_path = path_to_project_root() / file_name
     config = Config(str(file_path))
     if convert_data_types:
         return parse_configuration(config)
@@ -89,7 +99,7 @@ def parse_configuration(config: Config) -> Config:
         if config.fuzzy.t_norm.yager.lower() == "euler":
             w_parameter = np.e
         elif config.fuzzy.t_norm.yager.lower() == "golden":
-            w_parameter = (1 + 5 ** 0.5) / 2
+            w_parameter = (1 + 5**0.5) / 2
         else:
             w_parameter = float(config.fuzzy.t_norm.yager)
         config.fuzzy.t_norm.yager = w_parameter
