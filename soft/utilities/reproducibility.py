@@ -59,7 +59,7 @@ def path_to_project_root() -> pathlib.Path:
 
 
 def load_configuration(
-    file_name: Union[str, pathlib.Path] = "default_config.yaml",
+    file_name: Union[str, pathlib.Path] = "default_configuration.yaml",
     convert_data_types: bool = True,
 ) -> Config:
     """
@@ -77,7 +77,7 @@ def load_configuration(
     Returns:
         The configuration settings.
     """
-    file_path = path_to_project_root() / file_name
+    file_path = path_to_project_root() / "configurations" / file_name
     config = Config(str(file_path))
     if convert_data_types:
         return parse_configuration(config)
@@ -104,3 +104,28 @@ def parse_configuration(config: Config) -> Config:
             w_parameter = float(config.fuzzy.t_norm.yager)
         config.fuzzy.t_norm.yager = w_parameter
     return config
+
+
+def load_and_override_default_configuration(path: pathlib.Path) -> Config:
+    """
+    Load the default configuration file and override it with the configuration file given by
+    'path'. This function is useful for when you want to override the default configuration
+    settings with a configuration file that is not the default configuration file. For example,
+    you may want to override the default configuration settings with the configuration settings
+    for a specific experiment.
+
+    Args:
+        path: A file path to the configuration file that should be merged
+        with the default configuration.
+
+    Returns:
+        The custom configuration settings.
+    """
+    # the default configuration
+    configuration = load_configuration()
+    # the custom configuration
+    custom_configuration = load_configuration(path, convert_data_types=False)
+    configuration.merge(custom_configuration, exclusive=False)
+    if configuration.output.verbose:
+        configuration.print(ignored_keys=())
+    return configuration
