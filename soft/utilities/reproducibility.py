@@ -80,9 +80,7 @@ def load_configuration(
     file_path = path_to_project_root() / "configurations" / file_name
     config = Config(str(file_path))
     device = torch.device(
-        f"cuda:{torch.cuda.current_device()}"
-        if torch.cuda.is_available()
-        else "cpu"
+        f"cuda:{torch.cuda.current_device()}" if torch.cuda.is_available() else "cpu"
     )
     torch.set_default_device(device)
     with config.unfreeze():
