@@ -6,7 +6,11 @@ import unittest
 import gym
 import numpy as np
 
-from soft.utilities.reproducibility import env_seed, load_configuration, parse_configuration
+from soft.utilities.reproducibility import (
+    env_seed,
+    load_configuration,
+    parse_configuration,
+)
 
 
 class TestEnvironment(unittest.TestCase):
