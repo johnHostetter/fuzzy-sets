@@ -47,7 +47,7 @@ class TestConfiguration(unittest.TestCase):
 
     def test_parse_configuration(self) -> None:
         """
-        Test that the configuration is parsed correctly. For example, the user may specify the string "golden"
+        Test that the configuration is parsed correctly. For example, the user may specify "golden"
         for the Yager t-norm, but the function should convert this to the Golden ratio.
 
         Returns:
