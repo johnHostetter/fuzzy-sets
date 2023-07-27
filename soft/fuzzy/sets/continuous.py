@@ -7,6 +7,11 @@ import numpy as np
 
 
 class LogisticCurve(torch.nn.Module):
+    """
+    A generic torch.nn.Module class that implements a logistic curve, which allows us to
+    tune the midpoint, and growth of the curve, with a fixed supremum (the supremum is
+    the maximum value of the curve).
+    """
     def __init__(self, midpoint, growth, supremum):
         super().__init__()
         self.midpoint = torch.nn.parameter.Parameter(
