@@ -6,6 +6,50 @@ import torchquad
 import numpy as np
 
 
+class LogisticCurve(torch.nn.Module):
+    def __init__(self, midpoint, growth, supremum):
+        super().__init__()
+        self.midpoint = torch.nn.parameter.Parameter(
+            self.to_tensor_and_current_device(midpoint)
+        )
+        self.growth = torch.nn.parameter.Parameter(
+            self.to_tensor_and_current_device(growth)
+        )
+        self.supremum = self.to_tensor_and_current_device(
+            supremum  # not a parameter, so we don't want to track it
+        )
+
+    def to_tensor_and_current_device(self, value):
+        """
+        Convert the given value to a torch.Tensor and move it to the current device.
+
+        Args:
+            value: The value to convert and move.
+
+        Returns:
+            The converted value as a torch.Tensor.
+        """
+        if not isinstance(value, torch.Tensor):
+            value = torch.tensor(np.array(value)).float()
+            if torch.cuda.is_available():
+                value = value.to(torch.cuda.current_device())
+        return torch.nn.parameter.Parameter(value)
+
+    def forward(self, input_data):
+        """
+        Calculate the value of the logistic curve at the given point.
+        
+        Args:
+            input_data: 
+
+        Returns:
+
+        """
+        return self.supremum / (
+                1 + torch.exp(- self.growth * (input_data - self.midpoint))
+        )
+
+
 class ContinuousFuzzySet(torch.nn.Module):
     """
     A generic and abstract torch.nn.Module class that implements continuous fuzzy sets.
