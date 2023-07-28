@@ -72,16 +72,25 @@ class TestLogistic(unittest.TestCase):
         )
         logistic_curve = LogisticCurve(midpoint=0.5, growth=10, supremum=1)
 
-        self.assertTrue(torch.allclose(logistic_curve(x).float(), torch.tensor([
-            [8.6944e-08, 6.6637e-08, 5.4947e-04],
-            [8.7920e-05, 9.7032e-01, 8.7214e-01],
-            [2.8578e-04, 4.3886e-12, 4.2092e-01],
-            [1.3901e-03, 9.9992e-01, 8.7864e-02],
-            [3.4390e-02, 9.7689e-01, 1.6018e-03],
-            [2.2024e-03, 9.8685e-01, 9.9949e-01],
-            [1.0000e+00, 1.1396e-02, 7.6513e-01],
-            [1.0857e-04, 1.4986e-06, 5.8921e-13]
-        ]).float(), atol=1e-4, rtol=1e-4))
+        self.assertTrue(
+            torch.allclose(
+                logistic_curve(x).float(),
+                torch.tensor(
+                    [
+                        [8.6944e-08, 6.6637e-08, 5.4947e-04],
+                        [8.7920e-05, 9.7032e-01, 8.7214e-01],
+                        [2.8578e-04, 4.3886e-12, 4.2092e-01],
+                        [1.3901e-03, 9.9992e-01, 8.7864e-02],
+                        [3.4390e-02, 9.7689e-01, 1.6018e-03],
+                        [2.2024e-03, 9.8685e-01, 9.9949e-01],
+                        [1.0000e00, 1.1396e-02, 7.6513e-01],
+                        [1.0857e-04, 1.4986e-06, 5.8921e-13],
+                    ]
+                ).float(),
+                atol=1e-4,
+                rtol=1e-4,
+            )
+        )
 
 
 class TestGaussian(unittest.TestCase):

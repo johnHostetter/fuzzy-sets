@@ -12,6 +12,7 @@ class LogisticCurve(torch.nn.Module):
     tune the midpoint, and growth of the curve, with a fixed supremum (the supremum is
     the maximum value of the curve).
     """
+
     def __init__(self, midpoint, growth, supremum):
         super().__init__()
         self.midpoint = torch.nn.parameter.Parameter(
@@ -43,15 +44,15 @@ class LogisticCurve(torch.nn.Module):
     def forward(self, input_data):
         """
         Calculate the value of the logistic curve at the given point.
-        
+
         Args:
-            input_data: 
+            input_data:
 
         Returns:
 
         """
         return self.supremum / (
-                1 + torch.exp(- self.growth * (input_data - self.midpoint))
+            1 + torch.exp(-self.growth * (input_data - self.midpoint))
         )
 
 
