@@ -54,6 +54,7 @@ class TestLogistic(unittest.TestCase):
     """
     Test the LogisticCurve class.
     """
+
     def test_logistic_curve(self) -> None:
         """
         Test the calculation of the logistic curve.
