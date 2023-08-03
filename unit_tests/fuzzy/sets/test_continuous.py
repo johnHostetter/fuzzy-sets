@@ -51,6 +51,10 @@ def triangular_numpy(element: torch.Tensor, center: np.ndarray, width: np.ndarra
 
 
 class TestLogistic(unittest.TestCase):
+    """
+    Test the LogisticCurve class.
+    """
+
     def test_logistic_curve(self) -> None:
         """
         Test the calculation of the logistic curve.
@@ -58,7 +62,7 @@ class TestLogistic(unittest.TestCase):
         Returns:
             None
         """
-        x = torch.tensor(
+        elements = torch.tensor(
             [
                 [-1.1258, -1.1524, -0.2506],
                 [-0.4339, 0.8487, 0.6920],
@@ -74,7 +78,7 @@ class TestLogistic(unittest.TestCase):
 
         self.assertTrue(
             torch.allclose(
-                logistic_curve(x).float(),
+                logistic_curve(elements).float(),
                 torch.tensor(
                     [
                         [8.6944e-08, 6.6637e-08, 5.4947e-04],
