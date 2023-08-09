@@ -101,7 +101,7 @@ class ContinuousFuzzySet(torch.nn.Module):
 
         self.log_widths()  # update the stored log widths
 
-    def log_widths(self):
+    def log_widths(self) -> torch.Tensor:
         """
         Calculate the logarithm of the widths. Used for FLCs where the backpropagation may need
         to update the widths, and zero or negative values need to be avoided.
@@ -111,6 +111,10 @@ class ContinuousFuzzySet(torch.nn.Module):
         """
         with torch.no_grad():
             self._log_widths = torch.nn.parameter.Parameter(torch.exp(self.widths))
+            if torch.isinf(self._log_widths).any().item():
+                raise ValueError(
+                    "Some of the widths are infinite, which is not allowed."
+                )
         return self._log_widths
 
     @staticmethod
@@ -308,7 +312,7 @@ class Gaussian(ContinuousFuzzySet):
                 -1.0
                 * (
                     torch.pow(observations.unsqueeze(dim=-1) - self.centers, 2)
-                    / torch.pow(torch.log(self._log_widths), 2)
+                    / (torch.pow(torch.log(self._log_widths), 2) + 1e-32)
                 )
             )
             * self.mask
