@@ -312,9 +312,10 @@ class Gaussian(ContinuousFuzzySet):
                 -1.0
                 * (
                     torch.pow(
-                        to_tensor_and_current_device(
-                            observations
-                        ).unsqueeze(dim=-1) - self.centers, 2)
+                        to_tensor_and_current_device(observations).unsqueeze(dim=-1)
+                        - self.centers,
+                        2,
+                    )
                     / (torch.pow(torch.log(self._log_widths.cuda()), 2) + 1e-32)
                 )
             )

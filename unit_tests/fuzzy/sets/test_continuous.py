@@ -144,8 +144,12 @@ class TestGaussian(unittest.TestCase):
         mu_numpy = gaussian_numpy(elements, centers, sigmas)
 
         # make sure the Gaussian parameters are still identical afterward
-        assert torch.isclose(gaussian_mf.sigmas.cpu(), torch.tensor(sigmas).float()).all()
-        assert torch.isclose(gaussian_mf.centers.cpu(), torch.tensor(centers).float()).all()
+        assert torch.isclose(
+            gaussian_mf.sigmas.cpu(), torch.tensor(sigmas).float()
+        ).all()
+        assert torch.isclose(
+            gaussian_mf.centers.cpu(), torch.tensor(centers).float()
+        ).all()
         # the outputs of the PyTorch and Numpy versions should be approx. equal
         assert np.isclose(
             mu_pytorch.squeeze(dim=1).cpu().detach().numpy(), mu_numpy, rtol=1e-6
@@ -282,7 +286,9 @@ class TestGaussian(unittest.TestCase):
         mu_pytorch = gaussian_mf(torch.tensor(element[0]))
 
         # make sure the Gaussian parameters are still identical afterward
-        assert torch.isclose(gaussian_mf.centers.cpu(), centers[: element.shape[1]]).all()
+        assert torch.isclose(
+            gaussian_mf.centers.cpu(), centers[: element.shape[1]]
+        ).all()
         assert torch.isclose(gaussian_mf.widths.cpu(), sigmas[: element.shape[1]]).all()
         # the outputs of the PyTorch and Numpy versions should be approx. equal
         assert torch.isclose(
