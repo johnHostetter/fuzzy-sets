@@ -37,8 +37,8 @@ class LogisticCurve(torch.nn.Module):
         """
         if not isinstance(value, torch.Tensor):
             value = torch.tensor(np.array(value)).float()
-            if torch.cuda.is_available():
-                value = value.to(torch.cuda.current_device())
+            # if torch.cuda.is_available():
+            #     value = value.to(torch.cuda.current_device())
         return torch.nn.parameter.Parameter(value)
 
     def forward(self, input_data):
@@ -75,8 +75,8 @@ class ContinuousFuzzySet(torch.nn.Module):
         else:
             if not isinstance(centers, torch.Tensor):
                 centers = torch.tensor(np.array(centers)).float()
-                if torch.cuda.is_available():
-                    centers = centers.to(torch.cuda.current_device())
+                # if torch.cuda.is_available():
+                #     centers = centers.to(torch.cuda.current_device())
             self.centers = torch.nn.parameter.Parameter(centers)
 
         # initialize widths -- never adjust the widths directly,
@@ -92,13 +92,16 @@ class ContinuousFuzzySet(torch.nn.Module):
             # we assume the widths are given to us are within (0, 1)
             if not isinstance(widths, torch.Tensor):
                 widths = torch.tensor(np.array(widths)).float()
-                if torch.cuda.is_available():
-                    widths = widths.to(torch.cuda.current_device())
+                # if torch.cuda.is_available():
+                #     widths = widths.to(torch.cuda.current_device())
             # negative widths are a special flag to indicate that the fuzzy set
             # at that location does not actually exist
             self.mask = (widths > 0).int()  # keep only the valid fuzzy sets
             self.widths = torch.nn.parameter.Parameter(widths)
 
+        self.mask = torch.nn.Parameter(
+            self.mask.float(), requires_grad=False
+        )  # mask is parameter, so it can easily switch from CPU to GPU
         self.log_widths()  # update the stored log widths
 
     def log_widths(self) -> torch.Tensor:
@@ -302,8 +305,8 @@ class Gaussian(ContinuousFuzzySet):
         if not isinstance(observations, torch.Tensor):
             observations = torch.tensor(np.array(observations))
 
-        if torch.cuda.is_available():
-            observations = observations.to(torch.cuda.current_device())
+        # if torch.cuda.is_available():
+        #     observations = observations.to(torch.cuda.current_device())
 
         # print(observations.get_device(), self.centers.get_device())
 
