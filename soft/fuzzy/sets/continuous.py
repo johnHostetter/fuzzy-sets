@@ -5,22 +5,7 @@ import torch
 import torchquad
 import numpy as np
 
-
-def to_tensor_and_current_device(value):
-    """
-    Convert the given value to a torch.Tensor and move it to the current device.
-
-    Args:
-        value: The value to convert and move.
-
-    Returns:
-        The converted value as a torch.Tensor.
-    """
-    if not isinstance(value, torch.Tensor):
-        value = torch.tensor(np.array(value))
-    if torch.cuda.is_available():
-        value = value.to(torch.cuda.current_device())
-    return value
+from utilities.functions import convert_to_tensor
 
 
 class LogisticCurve(torch.nn.Module):
@@ -33,14 +18,14 @@ class LogisticCurve(torch.nn.Module):
     def __init__(self, midpoint, growth, supremum):
         super().__init__()
         self.midpoint = torch.nn.parameter.Parameter(
-            to_tensor_and_current_device(midpoint)
-        )
+            convert_to_tensor(midpoint)
+        ).float()
         self.growth = torch.nn.parameter.Parameter(
-            to_tensor_and_current_device(growth).double()
-        )
-        self.supremum = to_tensor_and_current_device(
+            convert_to_tensor(growth).double()
+        ).float()
+        self.supremum = convert_to_tensor(
             supremum  # not a parameter, so we don't want to track it
-        )
+        ).float()
 
     def forward(self, input_data):
         """
@@ -52,9 +37,6 @@ class LogisticCurve(torch.nn.Module):
         Returns:
 
         """
-        if torch.cuda.is_available():
-            input_data = input_data.cuda()
-
         return self.supremum / (
             1 + torch.exp(-self.growth * (input_data - self.midpoint))
         )
@@ -74,14 +56,9 @@ class ContinuousFuzzySet(torch.nn.Module):
         # initialize centers
         if centers is None:
             centers = torch.randn(self.in_features)
-
-        elif not isinstance(centers, torch.Tensor):
-            centers = torch.tensor(np.array(centers))
-
-        if torch.cuda.is_available():
-            centers = centers.to(torch.cuda.current_device())
-
-        self.centers = torch.nn.parameter.Parameter(centers.double())
+        else:
+            centers = convert_to_tensor(centers)
+        self.centers = torch.nn.parameter.Parameter(centers).float()
 
         # initialize widths -- never adjust the widths directly,
         # use the logarithm of them to avoid negatives
@@ -93,19 +70,16 @@ class ContinuousFuzzySet(torch.nn.Module):
             widths = torch.rand(self.in_features)
             self.mask = torch.ones(widths.shape)
         else:
-            if not isinstance(widths, torch.Tensor):
-                # we assume the widths are given to us are within (0, 1)
-                widths = torch.tensor(np.array(widths))
+            # we assume the widths are given to us are within (0, 1)
+            widths = convert_to_tensor(widths)
             # negative widths are a special flag to indicate that the fuzzy set
             # at that location does not actually exist
             self.mask = (widths > 0).int()  # keep only the valid fuzzy sets
 
-        if torch.cuda.is_available():
-            widths = widths.to(torch.cuda.current_device())
-            self.mask = self.mask.to(torch.cuda.current_device())
-
-        self.widths = torch.nn.parameter.Parameter(widths.double())
-
+        self.widths = torch.nn.parameter.Parameter(widths).float()
+        self.mask = torch.nn.Parameter(
+            self.mask.float(), requires_grad=False
+        )  # mask is parameter, so it can easily switch from CPU to GPU
         self.log_widths()  # update the stored log widths
 
     def log_widths(self) -> torch.Tensor:
@@ -123,21 +97,6 @@ class ContinuousFuzzySet(torch.nn.Module):
                     "Some of the widths are infinite, which is not allowed."
                 )
         return self._log_widths
-
-    @staticmethod
-    def convert_to_tensor(values):
-        """
-        If the given values are not torch.Tensor, convert them to torch.Tensor.
-
-        Args:
-            values: Values such as the centers or widths of a fuzzy set.
-
-        Returns:
-            torch.tensor(np.array(values))
-        """
-        if isinstance(values, torch.Tensor):
-            return values
-        return torch.tensor(np.array(values))
 
     def reshape_parameters(self):
         """
@@ -168,9 +127,9 @@ class ContinuousFuzzySet(torch.nn.Module):
         with torch.no_grad():
             self.in_features += len(centers)
             self.reshape_parameters()
-            centers = to_tensor_and_current_device(centers)
+            centers = convert_to_tensor(centers)
             self.centers = torch.nn.Parameter(torch.cat([self.centers, centers]))
-            widths = to_tensor_and_current_device(widths)
+            widths = convert_to_tensor(widths)
             self.widths = torch.nn.Parameter(torch.cat([self.widths, widths]))
         self.log_widths()  # update the stored log widths
 
@@ -304,19 +263,15 @@ class Gaussian(ContinuousFuzzySet):
         Returns:
             The membership degrees of the observations for the Gaussian fuzzy set.
         """
-        if not isinstance(observations, torch.Tensor):
-            observations = torch.tensor(np.array(observations))
+        observations = convert_to_tensor(observations)
 
         return (
             torch.exp(
                 -1.0
                 * (
                     torch.pow(
-                        to_tensor_and_current_device(observations).unsqueeze(dim=-1)
-                        - self.centers,
-                        2,
-                    )
-                    / (torch.pow(torch.log(self._log_widths.cuda()), 2) + 1e-32)
+                        observations.unsqueeze(dim=-1) - self.centers, 2,
+                    ) / (torch.pow(torch.log(self._log_widths.cuda()), 2) + 1e-32)
                 )
             )
             * self.mask
@@ -340,13 +295,14 @@ class Triangular(ContinuousFuzzySet):
         Returns:
             The membership degrees of the observations for the Triangular fuzzy set.
         """
+        observations = convert_to_tensor(observations)
+
         return (
             torch.max(
                 1.0
                 - (1.0 / torch.log(self._log_widths))
                 * torch.abs(
-                    to_tensor_and_current_device(observations).unsqueeze(dim=-1)
-                    - self.centers
+                    observations.unsqueeze(dim=-1) - self.centers
                 ),
                 torch.tensor(0.0),
             )
