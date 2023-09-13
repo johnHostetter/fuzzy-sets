@@ -270,8 +270,10 @@ class Gaussian(ContinuousFuzzySet):
                 -1.0
                 * (
                     torch.pow(
-                        observations.unsqueeze(dim=-1) - self.centers, 2,
-                    ) / (torch.pow(torch.log(self._log_widths), 2) + 1e-32)
+                        observations.unsqueeze(dim=-1) - self.centers,
+                        2,
+                    )
+                    / (torch.pow(torch.log(self._log_widths), 2) + 1e-32)
                 )
             )
             * self.mask
@@ -301,9 +303,7 @@ class Triangular(ContinuousFuzzySet):
             torch.max(
                 1.0
                 - (1.0 / torch.log(self._log_widths))
-                * torch.abs(
-                    observations.unsqueeze(dim=-1) - self.centers
-                ),
+                * torch.abs(observations.unsqueeze(dim=-1) - self.centers),
                 torch.tensor(0.0),
             )
             * self.mask
