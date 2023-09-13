@@ -271,7 +271,7 @@ class Gaussian(ContinuousFuzzySet):
                 * (
                     torch.pow(
                         observations.unsqueeze(dim=-1) - self.centers, 2,
-                    ) / (torch.pow(torch.log(self._log_widths.cuda()), 2) + 1e-32)
+                    ) / (torch.pow(torch.log(self._log_widths), 2) + 1e-32)
                 )
             )
             * self.mask
