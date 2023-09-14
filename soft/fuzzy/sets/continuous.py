@@ -231,6 +231,9 @@ class Gaussian(ContinuousFuzzySet):
     Implementation of the Gaussian membership function, written in PyTorch.
     """
 
+    def __init__(self, in_features, centers=None, widths=None, labels=None):
+        super().__init__(in_features, centers=centers, widths=widths, labels=labels)
+
     @property
     def sigmas(self):
         """
@@ -284,6 +287,9 @@ class Triangular(ContinuousFuzzySet):
     """
     Implementation of the Triangular membership function, written in PyTorch.
     """
+
+    def __init__(self, in_features, centers=None, widths=None, labels=None):
+        super().__init__(in_features, centers=centers, widths=widths, labels=labels)
 
     def forward(self, observations):
         """
