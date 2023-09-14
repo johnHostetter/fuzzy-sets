@@ -38,13 +38,14 @@ class TestAlgebraicProduct(unittest.TestCase):
         importance_before_calculation = tnorm.importance
         mu_pytorch = tnorm(element)
         mu_numpy = algebraic_product(
-            element.detach().numpy(), importance_before_calculation.detach().numpy()
+            element.cpu().detach().numpy(),
+            importance_before_calculation.detach().numpy(),
         )
 
         # make sure the parameters are still identical afterward
         assert torch.isclose(tnorm.importance, importance_before_calculation).all()
         # the outputs of the PyTorch and Numpy versions should be approx. equal
-        assert np.isclose(mu_pytorch.detach().numpy(), mu_numpy, rtol=1e-8).all()
+        assert np.isclose(mu_pytorch.cpu().detach().numpy(), mu_numpy, rtol=1e-8).all()
 
     def test_multi_input(self) -> None:
         """
@@ -59,13 +60,14 @@ class TestAlgebraicProduct(unittest.TestCase):
         importance_before_calculation = tnorm.importance
         mu_pytorch = tnorm(elements)
         mu_numpy = algebraic_product(
-            elements.detach().numpy(), importance_before_calculation.detach().numpy()
+            elements.cpu().detach().numpy(),
+            importance_before_calculation.detach().numpy(),
         )
 
         # make sure the parameters are still identical afterward
         assert torch.isclose(tnorm.importance, importance_before_calculation).all()
         # the outputs of the PyTorch and Numpy versions should be approx. equal
-        assert np.isclose(mu_pytorch.detach().numpy(), mu_numpy, rtol=1e-8).all()
+        assert np.isclose(mu_pytorch.cpu().detach().numpy(), mu_numpy, rtol=1e-8).all()
 
     def test_multi_input_with_importance_given(self) -> None:
         """
@@ -81,10 +83,11 @@ class TestAlgebraicProduct(unittest.TestCase):
         tnorm = AlgebraicProduct(n_inputs, importance=importance_before_calculation)
         mu_pytorch = tnorm(elements)
         mu_numpy = algebraic_product(
-            elements.detach().numpy(), importance_before_calculation.detach().numpy()
+            elements.cpu().detach().numpy(),
+            importance_before_calculation.detach().numpy(),
         )
 
         # make sure the parameters are still identical afterward
         assert torch.isclose(tnorm.importance, importance_before_calculation).all()
         # the outputs of the PyTorch and Numpy versions should be approx. equal
-        assert np.isclose(mu_pytorch.detach().numpy(), mu_numpy, rtol=1e-8).all()
+        assert np.isclose(mu_pytorch.cpu().detach().numpy(), mu_numpy, rtol=1e-8).all()

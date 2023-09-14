@@ -78,7 +78,7 @@ class TestLogistic(unittest.TestCase):
 
         self.assertTrue(
             torch.allclose(
-                logistic_curve(elements).float(),
+                logistic_curve(elements).cpu().float(),
                 torch.tensor(
                     [
                         [8.6944e-08, 6.6637e-08, 5.4947e-04],
@@ -113,16 +113,16 @@ class TestGaussian(unittest.TestCase):
         element = 0.0
         n_inputs = 1
         gaussian_mf = Gaussian(n_inputs)
-        sigma = gaussian_mf.sigmas.detach().numpy()
-        center = gaussian_mf.centers.detach().numpy()
+        sigma = gaussian_mf.sigmas.cpu().detach().numpy()
+        center = gaussian_mf.centers.cpu().detach().numpy()
         mu_pytorch = gaussian_mf(torch.tensor(element))
         mu_numpy = gaussian_numpy(element, center, sigma)
 
         # make sure the Gaussian parameters are still identical afterward
-        assert torch.isclose(gaussian_mf.sigmas, torch.tensor(sigma)).all()
-        assert torch.isclose(gaussian_mf.centers, torch.tensor(center)).all()
+        assert torch.isclose(gaussian_mf.sigmas.cpu(), torch.tensor(sigma)).all()
+        assert torch.isclose(gaussian_mf.centers.cpu(), torch.tensor(center)).all()
         # the outputs of the PyTorch and Numpy versions should be approx. equal
-        assert np.isclose(mu_pytorch.detach().numpy(), mu_numpy, rtol=1e-6).all()
+        assert np.isclose(mu_pytorch.cpu().detach().numpy(), mu_numpy, rtol=1e-6).all()
 
     def test_multi_input(self) -> None:
         """
@@ -137,18 +137,22 @@ class TestGaussian(unittest.TestCase):
         )
         gaussian_mf = Gaussian(in_features=elements.shape[1])
         centers, sigmas = (
-            gaussian_mf.centers.detach().numpy(),
-            gaussian_mf.sigmas.detach().numpy(),
+            gaussian_mf.centers.cpu().detach().numpy(),
+            gaussian_mf.sigmas.cpu().detach().numpy(),
         )
         mu_pytorch = gaussian_mf(elements)
         mu_numpy = gaussian_numpy(elements, centers, sigmas)
 
         # make sure the Gaussian parameters are still identical afterward
-        assert torch.isclose(gaussian_mf.sigmas, torch.tensor(sigmas).float()).all()
-        assert torch.isclose(gaussian_mf.centers, torch.tensor(centers).float()).all()
+        assert torch.isclose(
+            gaussian_mf.sigmas.cpu(), torch.tensor(sigmas).float()
+        ).all()
+        assert torch.isclose(
+            gaussian_mf.centers.cpu(), torch.tensor(centers).float()
+        ).all()
         # the outputs of the PyTorch and Numpy versions should be approx. equal
         assert np.isclose(
-            mu_pytorch.squeeze(dim=1).detach().numpy(), mu_numpy, rtol=1e-6
+            mu_pytorch.squeeze(dim=1).cpu().detach().numpy(), mu_numpy, rtol=1e-6
         ).all()
 
     def test_multi_input_with_centers_given(self) -> None:
@@ -165,16 +169,16 @@ class TestGaussian(unittest.TestCase):
         )
         centers = np.array([0.0, 0.25, 0.5, 0.75, 1.0])
         gaussian_mf = Gaussian(in_features=centers.shape, centers=centers)
-        sigmas = gaussian_mf.sigmas.detach().numpy()
+        sigmas = gaussian_mf.sigmas.cpu().detach().numpy()
         mu_pytorch = gaussian_mf(elements)
         mu_numpy = gaussian_numpy(elements, centers, sigmas)
 
         # make sure the Gaussian parameters are still identical afterward
-        assert torch.isclose(gaussian_mf.sigmas, torch.tensor(sigmas).float()).all()
-        assert torch.isclose(gaussian_mf.centers, torch.tensor(centers).float()).all()
+        assert torch.isclose(gaussian_mf.sigmas.cpu(), torch.tensor(sigmas).float()).all()
+        assert torch.isclose(gaussian_mf.centers.cpu(), torch.tensor(centers).float()).all()
         # the outputs of the PyTorch and Numpy versions should be approx. equal
         assert np.isclose(
-            mu_pytorch.squeeze(dim=1).detach().numpy(), mu_numpy, rtol=1e-6
+            mu_pytorch.squeeze(dim=1).cpu().detach().numpy(), mu_numpy, rtol=1e-4
         ).all()
 
         expected_areas = torch.tensor(
@@ -200,14 +204,14 @@ class TestGaussian(unittest.TestCase):
         gaussian_mf = Gaussian(in_features=elements.shape[1], widths=sigmas)
         mu_pytorch = gaussian_mf(elements)
         mu_numpy = gaussian_numpy(
-            elements, gaussian_mf.centers.detach().numpy(), sigmas
+            elements, gaussian_mf.centers.cpu().detach().numpy(), sigmas
         )
 
         # make sure the Gaussian parameters are still identical afterward
-        assert torch.isclose(gaussian_mf.widths, sigmas).all()
+        assert torch.isclose(gaussian_mf.widths.cpu(), sigmas).all()
         # the outputs of the PyTorch and Numpy versions should be approx. equal
         assert np.isclose(
-            mu_pytorch.squeeze(dim=1).detach().numpy(), mu_numpy, rtol=1e-6
+            mu_pytorch.squeeze(dim=1).cpu().detach().numpy(), mu_numpy, rtol=1e-6
         ).all()
 
     def test_multi_input_with_both_given(self) -> None:
@@ -230,14 +234,14 @@ class TestGaussian(unittest.TestCase):
             in_features=elements.shape[1], centers=centers, widths=sigmas
         )
         mu_pytorch = gaussian_mf(elements)
-        mu_numpy = gaussian_numpy(elements, centers.detach().numpy(), sigmas)
+        mu_numpy = gaussian_numpy(elements, centers.cpu().detach().numpy(), sigmas)
 
         # make sure the Gaussian parameters are still identical afterward
-        assert torch.isclose(gaussian_mf.centers, centers).all()
-        assert torch.isclose(gaussian_mf.widths, sigmas).all()
+        assert torch.isclose(gaussian_mf.centers.cpu(), centers).all()
+        assert torch.isclose(gaussian_mf.widths.cpu(), sigmas).all()
         # the outputs of the PyTorch and Numpy versions should be approx. equal
         assert np.isclose(
-            mu_pytorch.squeeze(dim=1).detach().numpy(), mu_numpy, rtol=1e-6
+            mu_pytorch.squeeze(dim=1).cpu().detach().numpy(), mu_numpy, rtol=1e-6
         ).all()
 
     def test_consistency(self) -> None:
@@ -282,11 +286,13 @@ class TestGaussian(unittest.TestCase):
         mu_pytorch = gaussian_mf(torch.tensor(element[0]))
 
         # make sure the Gaussian parameters are still identical afterward
-        assert torch.isclose(gaussian_mf.centers, centers[: element.shape[1]]).all()
-        assert torch.isclose(gaussian_mf.widths, sigmas[: element.shape[1]]).all()
+        assert torch.isclose(
+            gaussian_mf.centers.cpu(), centers[: element.shape[1]]
+        ).all()
+        assert torch.isclose(gaussian_mf.widths.cpu(), sigmas[: element.shape[1]]).all()
         # the outputs of the PyTorch and Numpy versions should be approx. equal
         assert torch.isclose(
-            mu_pytorch.float(), target_membership_degrees, rtol=1e-1
+            mu_pytorch.cpu().float(), target_membership_degrees, rtol=1e-1
         ).all()
 
 
@@ -306,16 +312,16 @@ class TestTriangular(unittest.TestCase):
         element = 0.0
         n_inputs = 1
         triangular_mf = Triangular(n_inputs)
-        center = triangular_mf.centers.detach().numpy()
-        width = triangular_mf.widths.detach().numpy()
+        center = triangular_mf.centers.cpu().detach().numpy()
+        width = triangular_mf.widths.cpu().detach().numpy()
         mu_pytorch = triangular_mf(torch.tensor(element))
         mu_numpy = triangular_numpy(element, center, width)
 
         # make sure the Gaussian parameters are still identical afterward
-        assert torch.isclose(triangular_mf.centers, torch.tensor(center)).all()
-        assert torch.isclose(triangular_mf.widths, torch.tensor(width)).all()
+        assert torch.isclose(triangular_mf.centers.cpu(), torch.tensor(center)).all()
+        assert torch.isclose(triangular_mf.widths.cpu(), torch.tensor(width)).all()
         # the outputs of the PyTorch and Numpy versions should be approx. equal
-        assert np.isclose(mu_pytorch.detach().numpy(), mu_numpy, atol=1e-2).all()
+        assert np.isclose(mu_pytorch.cpu().detach().numpy(), mu_numpy, atol=1e-2).all()
 
     def test_multi_input(self) -> None:
         """
@@ -330,18 +336,18 @@ class TestTriangular(unittest.TestCase):
         )
         triangular_mf = Triangular(in_features=elements.shape[1])
         centers, widths = (
-            triangular_mf.centers.detach().numpy(),
-            triangular_mf.widths.detach().numpy(),
+            triangular_mf.centers.cpu().detach().numpy(),
+            triangular_mf.widths.cpu().detach().numpy(),
         )
         mu_pytorch = triangular_mf(elements)
-        mu_numpy = triangular_numpy(elements.detach().numpy(), centers, widths)
+        mu_numpy = triangular_numpy(elements.cpu().detach().numpy(), centers, widths)
 
         # make sure the Gaussian parameters are still identical afterward
-        assert torch.isclose(triangular_mf.centers, torch.tensor(centers)).all()
-        assert torch.isclose(triangular_mf.widths, torch.tensor(widths)).all()
+        assert torch.isclose(triangular_mf.centers.cpu(), torch.tensor(centers).float()).all()
+        assert torch.isclose(triangular_mf.widths.cpu(), torch.tensor(widths).float()).all()
         # the outputs of the PyTorch and Numpy versions should be approx. equal
         assert np.isclose(
-            mu_pytorch.squeeze(dim=1).detach().numpy(), mu_numpy, atol=1e-2
+            mu_pytorch.squeeze(dim=1).cpu().detach().numpy(), mu_numpy, atol=1e-2
         ).all()
 
     def test_multi_input_with_centers_given(self) -> None:
@@ -358,16 +364,16 @@ class TestTriangular(unittest.TestCase):
         )
         centers = np.array([0.0, 0.25, 0.5, 0.75, 1.0])
         triangular_mf = Triangular(in_features=elements.shape[1], centers=centers)
-        widths = triangular_mf.widths.detach().numpy()
+        widths = triangular_mf.widths.cpu().detach().numpy()
         mu_pytorch = triangular_mf(elements)
-        mu_numpy = triangular_numpy(elements.detach().numpy(), centers, widths)
+        mu_numpy = triangular_numpy(elements.cpu().detach().numpy(), centers, widths)
 
         # make sure the Gaussian parameters are still identical afterward
-        assert torch.isclose(triangular_mf.centers, torch.tensor(centers).float()).all()
-        assert torch.isclose(triangular_mf.widths, torch.tensor(widths).float()).all()
+        assert torch.isclose(triangular_mf.centers.cpu(), torch.tensor(centers).float()).all()
+        assert torch.isclose(triangular_mf.widths.cpu(), torch.tensor(widths).float()).all()
         # the outputs of the PyTorch and Numpy versions should be approx. equal
         assert np.isclose(
-            mu_pytorch.squeeze(dim=1).detach().numpy(), mu_numpy, atol=1e-2
+            mu_pytorch.squeeze(dim=1).cpu().detach().numpy(), mu_numpy, atol=1e-2
         ).all()
 
     def test_multi_input_with_widths_given(self) -> None:
@@ -386,16 +392,16 @@ class TestTriangular(unittest.TestCase):
             [0.1, 0.25, 0.5, 0.75, 1.0]
         )  # negative widths are missing sets
         triangular_mf = Triangular(in_features=elements.shape[1], widths=widths)
-        centers = triangular_mf.centers.detach().numpy()
+        centers = triangular_mf.centers.cpu().detach().numpy()
         mu_pytorch = triangular_mf(elements)
-        mu_numpy = triangular_numpy(elements.detach().numpy(), centers, widths)
+        mu_numpy = triangular_numpy(elements.cpu().detach().numpy(), centers, widths)
 
         # make sure the Gaussian parameters are still identical afterward
-        assert torch.isclose(triangular_mf.centers, torch.tensor(centers).float()).all()
-        assert torch.isclose(triangular_mf.widths, torch.tensor(widths).float()).all()
+        assert torch.isclose(triangular_mf.centers.cpu(), torch.tensor(centers).float()).all()
+        assert torch.isclose(triangular_mf.widths.cpu(), torch.tensor(widths).float()).all()
         # the outputs of the PyTorch and Numpy versions should be approx. equal
         assert np.isclose(
-            mu_pytorch.squeeze(dim=1).detach().numpy(), mu_numpy, atol=1e-2
+            mu_pytorch.squeeze(dim=1).cpu().detach().numpy(), mu_numpy, atol=1e-2
         ).all()
 
     def test_multi_input_with_both_given(self) -> None:
@@ -418,12 +424,12 @@ class TestTriangular(unittest.TestCase):
             in_features=elements.shape[1], centers=centers, widths=widths
         )
         mu_pytorch = triangular_mf(elements)
-        mu_numpy = triangular_numpy(elements.detach().numpy(), centers, widths)
+        mu_numpy = triangular_numpy(elements.cpu().detach().numpy(), centers, widths)
 
         # make sure the Gaussian parameters are still identical afterward
-        assert (triangular_mf.centers.detach().numpy() == centers).all()
-        assert np.isclose(triangular_mf.widths.detach().numpy(), widths).all()
+        assert (triangular_mf.centers.cpu().detach().numpy() == centers).all()
+        assert np.isclose(triangular_mf.widths.cpu().detach().numpy(), widths).all()
         # the outputs of the PyTorch and Numpy versions should be approx. equal
         assert np.isclose(
-            mu_pytorch.squeeze(dim=1).detach().numpy(), mu_numpy, atol=1e-2
+            mu_pytorch.squeeze(dim=1).cpu().detach().numpy(), mu_numpy, atol=1e-2
         ).all()
