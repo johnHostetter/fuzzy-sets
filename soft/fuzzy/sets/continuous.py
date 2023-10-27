@@ -1,8 +1,6 @@
 """
 Implements the continuous fuzzy sets, using PyTorch.
 """
-import sys
-
 import torch
 import torchquad
 import numpy as np
