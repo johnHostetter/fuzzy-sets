@@ -91,11 +91,16 @@ class ContinuousFuzzySet(torch.nn.Module):
             The logarithm of the widths.
         """
         with torch.no_grad():
-            self._log_widths = torch.nn.parameter.Parameter(torch.exp(self.widths))
+            self._log_widths = torch.nn.parameter.Parameter(torch.log(self.widths))
             if torch.isinf(self._log_widths).any().item():
-                raise ValueError(
-                    "Some of the widths are infinite, which is not allowed."
-                )
+                if torch.isclose(self.widths, torch.zeros(1), atol=1e-64).any():
+                    # zero widths are problematic; change to near zero
+                    self.widths[torch.isclose(self.widths, torch.zeros(1))] = 1e-32
+                    # then call the method again (w/ widths now all non-zero)
+                    self.log_widths()
+                else:
+                    # unrecognized error
+                    raise ValueError("Some widths are infinite, which is not allowed.")
         return self._log_widths
 
     def reshape_parameters(self):
@@ -276,7 +281,7 @@ class Gaussian(ContinuousFuzzySet):
                         observations.unsqueeze(dim=-1) - self.centers,
                         2,
                     )
-                    / (torch.pow(torch.log(self._log_widths), 2) + 1e-32)
+                    / (torch.pow(torch.exp(self._log_widths), 2) + 1e-32)
                 )
             )
             * self.mask
@@ -308,7 +313,7 @@ class Triangular(ContinuousFuzzySet):
         return (
             torch.max(
                 1.0
-                - (1.0 / torch.log(self._log_widths))
+                - (1.0 / torch.exp(self._log_widths))
                 * torch.abs(observations.unsqueeze(dim=-1) - self.centers),
                 torch.tensor(0.0),
             )
