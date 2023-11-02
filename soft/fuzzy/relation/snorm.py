@@ -4,7 +4,7 @@ Implements the s-norm fuzzy relations.
 
 from typing import Union, List, Callable
 
-from soft.fuzzy.sets.discrete import OrdinaryDiscreteFuzzySet
+from soft.fuzzy.sets.discrete import DiscreteFuzzySet
 from soft.fuzzy.relation.extension import DiscreteFuzzyRelation
 
 
@@ -13,7 +13,7 @@ class StandardUnion(DiscreteFuzzyRelation):
     A standard union of one or more ordinary fuzzy sets.
     """
 
-    def __init__(self, fuzzy_sets: List[OrdinaryDiscreteFuzzySet], name=None):
+    def __init__(self, fuzzy_sets: List[DiscreteFuzzySet], name=None):
         """
         Parameters
         ----------

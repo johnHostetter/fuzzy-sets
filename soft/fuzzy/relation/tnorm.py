@@ -5,7 +5,7 @@ from typing import List
 
 import torch
 
-from soft.fuzzy.sets.discrete import OrdinaryDiscreteFuzzySet
+from soft.fuzzy.sets.discrete import DiscreteFuzzySet
 from soft.fuzzy.relation.extension import DiscreteFuzzyRelation
 
 
@@ -54,7 +54,7 @@ class StandardIntersection(DiscreteFuzzyRelation):
     A standard intersection of one or more ordinary fuzzy sets.
     """
 
-    def __init__(self, formulas: List[OrdinaryDiscreteFuzzySet], name=None):
+    def __init__(self, formulas: List[DiscreteFuzzySet], name=None):
         """
         Parameters
         ----------
