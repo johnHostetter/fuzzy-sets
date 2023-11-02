@@ -32,7 +32,9 @@ class SpecialFuzzySet(BaseDiscreteFuzzySet):
         sympy.Interval = alpha_cut.formulas[0][1]
         for formula in alpha_cut.formulas[1:]:
             sympy.Interval = sympy.Union(sympy.Interval, formula[1])
-        BaseDiscreteFuzzySet.__init__(self, formulas=[(alpha, sympy.Interval)], name=name)
+        BaseDiscreteFuzzySet.__init__(
+            self, formulas=[(alpha, sympy.Interval)], name=name
+        )
         self.alpha = alpha
 
     def degree(self, element):

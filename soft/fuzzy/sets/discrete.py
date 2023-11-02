@@ -63,7 +63,9 @@ class BaseDiscreteFuzzySet(ABC):
                 return formula
         return None
 
-    def plot(self, lower: float = 0, upper: float = 100, samples: int = 100) -> (Figure, Axes):
+    def plot(
+        self, lower: float = 0, upper: float = 100, samples: int = 100
+    ) -> (Figure, Axes):
         """
         Graphs the fuzzy set in the universe of elements.
 
@@ -205,7 +207,9 @@ class FuzzyVariable(BaseDiscreteFuzzySet):
             degrees.append(float(fuzzy_set.degree(element)))
         return tuple(degrees)
 
-    def plot(self, lower: float = 0, upper: float = 100, samples: int = 100) -> (Figure, Axes):
+    def plot(
+        self, lower: float = 0, upper: float = 100, samples: int = 100
+    ) -> (Figure, Axes):
         """
         Graphs the fuzzy set in the universe of elements.
 

@@ -1,7 +1,16 @@
 import unittest
 
-from soft.fuzzy.sets.discrete import BaseDiscreteFuzzySet, DiscreteFuzzySet, FuzzyVariable
-from examples.fuzzy.sets.discrete.student import unknown, known, unsatisfactory_unknown, learned
+from soft.fuzzy.sets.discrete import (
+    BaseDiscreteFuzzySet,
+    DiscreteFuzzySet,
+    FuzzyVariable,
+)
+from examples.fuzzy.sets.discrete.student import (
+    unknown,
+    known,
+    unsatisfactory_unknown,
+    learned,
+)
 
 
 class TestDiscreteFuzzySet(unittest.TestCase):
@@ -13,10 +22,7 @@ class TestDiscreteFuzzySet(unittest.TestCase):
             None
         """
         self.assertRaises(
-            NotImplementedError,
-            BaseDiscreteFuzzySet.degree,
-            None,
-            element=0
+            NotImplementedError, BaseDiscreteFuzzySet.degree, None, element=0
         )
 
     def test_empty_discrete_fuzzy_set(self) -> None:
@@ -47,9 +53,7 @@ class TestDiscreteFuzzySet(unittest.TestCase):
 
     def test_discrete_fuzzy_set_plot(self) -> None:
         discrete_fuzzy_set = known()
-        figure, axes = discrete_fuzzy_set.plot(
-            lower=0, upper=100, samples=100
-        )
+        figure, axes = discrete_fuzzy_set.plot(lower=0, upper=100, samples=100)
         assert axes.get_title() == "Known Fuzzy Set"
         assert axes.get_xlabel() == "Elements of Universe"
         assert axes.get_ylabel() == "Degree of Membership"
@@ -61,7 +65,9 @@ class TestFuzzyVariable(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.terms = [unknown(), known(), unsatisfactory_unknown(), learned()]
-        self.fuzzy_variable = FuzzyVariable(fuzzy_sets=self.terms, name="Student Knowledge")
+        self.fuzzy_variable = FuzzyVariable(
+            fuzzy_sets=self.terms, name="Student Knowledge"
+        )
 
     def test_create_fuzzy_variable(self) -> None:
         assert len(self.fuzzy_variable.fuzzy_sets) == len(self.terms)
@@ -73,9 +79,7 @@ class TestFuzzyVariable(unittest.TestCase):
         assert actual_membership == expected_membership
 
     def test_fuzzy_variable_plot(self) -> None:
-        figure, axes = self.fuzzy_variable.plot(
-            lower=0, upper=100, samples=100
-        )
+        figure, axes = self.fuzzy_variable.plot(lower=0, upper=100, samples=100)
         assert axes.get_title() == "Student Knowledge Fuzzy Variable"
         assert axes.get_xlabel() == "Elements of Universe"
         assert axes.get_ylabel() == "Degree of Membership"
