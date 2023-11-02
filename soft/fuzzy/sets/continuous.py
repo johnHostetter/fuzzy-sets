@@ -100,9 +100,7 @@ class ContinuousFuzzySet(torch.nn.Module):
                     self.log_widths()
                 else:
                     # unrecognized error
-                    raise ValueError(
-                        "Some widths are infinite, which is not allowed."
-                    )
+                    raise ValueError("Some widths are infinite, which is not allowed.")
         return self._log_widths
 
     def reshape_parameters(self):
