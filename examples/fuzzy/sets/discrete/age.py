@@ -6,7 +6,7 @@ from sympy import Symbol, Interval, oo  # oo is infinity
 from soft.fuzzy.relation.snorm import StandardUnion
 from soft.fuzzy.relation.tnorm import StandardIntersection
 from soft.fuzzy.relation.complement import standard_complement
-from soft.fuzzy.sets.discrete import OrdinaryDiscreteFuzzySet, FuzzyVariable
+from soft.fuzzy.sets.discrete import DiscreteFuzzySet, FuzzyVariable
 
 
 def a_1():
@@ -18,7 +18,7 @@ def a_1():
     formulas.append((1, Interval.Lopen(-oo, 20)))
     formulas.append(((35 - element) / 15, Interval.open(20, 35)))
     formulas.append((0, Interval.Ropen(35, oo)))
-    return OrdinaryDiscreteFuzzySet(formulas, "A1")
+    return DiscreteFuzzySet(formulas, "A1")
 
 
 def a_2():
@@ -32,7 +32,7 @@ def a_2():
     formulas.append((1, Interval(35, 45)))
     formulas.append(((60 - element) / 15, Interval.open(45, 60)))
     formulas.append((0, Interval.Ropen(60, oo)))
-    return OrdinaryDiscreteFuzzySet(formulas, "A2")
+    return DiscreteFuzzySet(formulas, "A2")
 
 
 def a_3():
@@ -44,24 +44,24 @@ def a_3():
     formulas.append((0, Interval.Lopen(-oo, 45)))
     formulas.append(((element - 45) / 15, Interval.open(45, 60)))
     formulas.append((1, Interval.Ropen(60, oo)))
-    return OrdinaryDiscreteFuzzySet(formulas, "A3")
+    return DiscreteFuzzySet(formulas, "A3")
 
 
 a1 = a_1()
 a2 = a_2()
 a3 = a_3()
 
-FuzzyVariable([a1, a2, a3], "Age").graph(0, 80)
+FuzzyVariable([a1, a2, a3], "Age").plot(0, 80)
 b = StandardIntersection([a1, a2], "B")
-b.graph(0, 80)
+b.plot(0, 80)
 c = StandardIntersection([a2, a3], "C")
-c.graph(0, 80)
-StandardUnion([b, c], "B Union C").graph(0, 80)
+c.plot(0, 80)
+StandardUnion([b, c], "B Union C").plot(0, 80)
 standard_complement(a1)
-a1.graph(0, 80)
+a1.plot(0, 80)
 standard_complement(a3)
-a3.graph(0, 80)
-StandardIntersection([a1, a3], "Not(A1) Intersection Not(A3)").graph(0, 80)
+a3.plot(0, 80)
+StandardIntersection([a1, a3], "Not(A1) Intersection Not(A3)").plot(0, 80)
 standard_complement(a1)
 standard_complement(a3)
 # doesn't work yet

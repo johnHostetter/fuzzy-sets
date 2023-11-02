@@ -1,12 +1,15 @@
 """
 Implements the discrete fuzzy sets.
 """
-from typing import Union, List
+from abc import ABC, abstractmethod
+from typing import Union, List, NoReturn, Tuple
 
 import sympy
 import numpy as np
+from matplotlib.axes import Axes
 from sympy import Symbol
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 
 
 # https://docs.sympy.org/latest/modules/integrals/integrals.html
@@ -14,14 +17,29 @@ import matplotlib.pyplot as plt
 # https://numpydoc.readthedocs.io/en/latest/example.html
 
 
-class DiscreteFuzzySet:
+class BaseDiscreteFuzzySet(ABC):
     """
     A parent class for all fuzzy sets to inherit. Allows the user to visualize the fuzzy set.
     """
 
-    def __init__(self, formulas, name):
+    def __init__(self, formulas: list, name: str):
         self.formulas = formulas
         self.name = name
+
+    @abstractmethod
+    def degree(self, element) -> NoReturn:
+        """
+        Calculates degree of membership for the provided "element" where element is a(n) int/float.
+
+        Args:
+            element: The element is from the universe of discourse.
+
+        Returns:
+            NotImplementedError as this is an abstract method.
+        """
+        raise NotImplementedError(
+            "Attempted to call an abstract method from BaseDiscreteFuzzySet."
+        )
 
     def fetch(self, element: Union[int, float]):
         """
@@ -45,19 +63,9 @@ class DiscreteFuzzySet:
                 return formula
         return None
 
-    def degree(self, element: Union[int, float]):
-        """
-        Calculates degree of membership for the provided "element" where element is a(n) int/float.
-
-        Args:
-            element: The element is from the universe of discourse.
-
-        Returns:
-            The degree of membership for the element.
-        """
-        raise NotImplementedError("degree() method must be implemented by child class.")
-
-    def graph(self, lower: float = 0, upper: float = 100, samples: int = 100):
+    def plot(
+        self, lower: float = 0, upper: float = 100, samples: int = 100
+    ) -> (Figure, Axes):
         """
         Graphs the fuzzy set in the universe of elements.
 
@@ -72,6 +80,7 @@ class DiscreteFuzzySet:
             to approximate the graph. A higher sample value will yield a higher resolution
             of the graph, but large values will lead to performance issues.
         """
+        fig, axes = plt.subplots()
         x_list = np.linspace(lower, upper, samples)
         y_list = []
         for x_value in x_list:
@@ -81,16 +90,16 @@ class DiscreteFuzzySet:
         else:
             plt.title("Unnamed Fuzzy Set")
 
-        plt.xlim([lower, upper])
-        plt.ylim([0, 1.1])
-        plt.xlabel("Elements of Universe")
-        plt.ylabel("Degree of Membership")
-        plt.plot(x_list, y_list, color="grey", label="mu")
-        plt.legend()
-        plt.show()
+        axes.set_xlim([lower, upper])
+        axes.set_ylim([0, 1.1])
+        axes.set_xlabel("Elements of Universe")
+        axes.set_ylabel("Degree of Membership")
+        axes.plot(x_list, y_list, color="grey", label="mu")
+        axes.legend()
+        return fig, axes
 
 
-class OrdinaryDiscreteFuzzySet(DiscreteFuzzySet):
+class DiscreteFuzzySet(BaseDiscreteFuzzySet):
     """
     An ordinary fuzzy set that is of type 1 and level 1.
     """
@@ -115,7 +124,7 @@ class OrdinaryDiscreteFuzzySet(DiscreteFuzzySet):
             This feature is useful when visualizing the fuzzy set, and its interaction with
             other fuzzy sets in the same space.
         """
-        DiscreteFuzzySet.__init__(self, formulas, name)
+        BaseDiscreteFuzzySet.__init__(self, formulas, name)
 
     def degree(self, element: Union[int, float]):
         """
@@ -138,13 +147,11 @@ class OrdinaryDiscreteFuzzySet(DiscreteFuzzySet):
             membership = formula
         return membership
 
-    def height(self):
+    def height(self) -> float:
         """
         Calculates the height of the fuzzy set.
 
-        Returns
-        -------
-        height : 'float'
+        Returns:
             The height, or supremum, of the fuzzy set.
         """
         heights = []
@@ -165,12 +172,12 @@ class OrdinaryDiscreteFuzzySet(DiscreteFuzzySet):
         return max(heights)
 
 
-class FuzzyVariable(DiscreteFuzzySet):
+class FuzzyVariable(BaseDiscreteFuzzySet):
     """
     A fuzzy variable, or linguistic variable, that contains fuzzy sets.
     """
 
-    def __init__(self, fuzzy_sets: List[OrdinaryDiscreteFuzzySet], name=None):
+    def __init__(self, fuzzy_sets: List[BaseDiscreteFuzzySet], name=None):
         """
         Parameters
         ----------
@@ -181,10 +188,10 @@ class FuzzyVariable(DiscreteFuzzySet):
             This feature is useful when visualizing the fuzzy set, and its interaction with
             other fuzzy sets in the same space.
         """
-        DiscreteFuzzySet.__init__(self, fuzzy_sets, name)
+        BaseDiscreteFuzzySet.__init__(self, fuzzy_sets, name)
         self.fuzzy_sets = fuzzy_sets
 
-    def degree(self, element: Union[int, float]) -> tuple:
+    def degree(self, element: Union[int, float]) -> Tuple[float]:
         """
         Calculates the degree of membership for the provided element value
         where element is a(n) int/float.
@@ -197,10 +204,12 @@ class FuzzyVariable(DiscreteFuzzySet):
         """
         degrees = []
         for fuzzy_set in self.formulas:
-            degrees.append(fuzzy_set.degree(element))
+            degrees.append(float(fuzzy_set.degree(element)))
         return tuple(degrees)
 
-    def graph(self, lower: float = 0, upper: float = 100, samples: int = 100):
+    def plot(
+        self, lower: float = 0, upper: float = 100, samples: int = 100
+    ) -> (Figure, Axes):
         """
         Graphs the fuzzy set in the universe of elements.
 
@@ -214,12 +223,13 @@ class FuzzyVariable(DiscreteFuzzySet):
         Returns:
             None
         """
+        fig, axes = plt.subplots()
         for fuzzy_set in self.fuzzy_sets:
             x_list = np.linspace(lower, upper, samples)
             y_list = []
             for x_value in x_list:
                 y_list.append(fuzzy_set.degree(x_value))
-            plt.plot(
+            axes.plot(
                 x_list,
                 y_list,
                 color=np.random.rand(
@@ -229,13 +239,13 @@ class FuzzyVariable(DiscreteFuzzySet):
             )
 
         if self.name is not None:
-            plt.title(f"{self.name} Fuzzy Variable")
+            axes.set_title(f"{self.name} Fuzzy Variable")
         else:
-            plt.title("Unnamed Fuzzy Variable")
+            axes.set_title("Unnamed Fuzzy Variable")
 
-        plt.xlim([lower, upper])
-        plt.ylim([0, 1.1])
-        plt.xlabel("Elements of Universe")
-        plt.ylabel("Degree of Membership")
-        plt.legend()
-        plt.show()
+        axes.set_xlim([lower, upper])
+        axes.set_ylim([0, 1.1])
+        axes.set_xlabel("Elements of Universe")
+        axes.set_ylabel("Degree of Membership")
+        axes.legend()
+        return fig, axes

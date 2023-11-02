@@ -1,17 +1,17 @@
 """
 Implementation of the special fuzzy set and the alpha cut operation for discrete fuzzy sets.
 """
-from typing import List, Union, Callable
+from typing import List, Union
 
 import sympy
 
-from soft.fuzzy.sets.discrete import DiscreteFuzzySet, OrdinaryDiscreteFuzzySet
+from soft.fuzzy.sets.discrete import BaseDiscreteFuzzySet, DiscreteFuzzySet
 
 
-class SpecialFuzzySet(DiscreteFuzzySet):
+class SpecialFuzzySet(BaseDiscreteFuzzySet):
     """
     The special fuzzy set membership function for a given element x in the universe of
-    discourse X, is defined as the alpha value multipled by the element x's degree of
+    discourse X, is defined as the alpha value multiplied by the element x's degree of
     membership within the fuzzy set's alpha cut.
     """
 
@@ -32,10 +32,12 @@ class SpecialFuzzySet(DiscreteFuzzySet):
         sympy.Interval = alpha_cut.formulas[0][1]
         for formula in alpha_cut.formulas[1:]:
             sympy.Interval = sympy.Union(sympy.Interval, formula[1])
-        DiscreteFuzzySet.__init__(self, formulas=[(alpha, sympy.Interval)], name=name)
+        BaseDiscreteFuzzySet.__init__(
+            self, formulas=[(alpha, sympy.Interval)], name=name
+        )
         self.alpha = alpha
 
-    def degree(self, element):
+    def degree(self, element: float) -> float:
         """
         Calculates degree of membership for the provided 'element' where element is a(n) int/float.
 
@@ -60,7 +62,7 @@ class SpecialFuzzySet(DiscreteFuzzySet):
             membership = formula
         return membership
 
-    def height(self):
+    def height(self) -> float:
         """
         Calculates the height of the special fuzzy set.
 
@@ -72,16 +74,16 @@ class SpecialFuzzySet(DiscreteFuzzySet):
         return self.alpha
 
 
-class AlphaCut(DiscreteFuzzySet):
+class AlphaCut(BaseDiscreteFuzzySet):
     """
     The alpha cut of a fuzzy set yields a crisp set.
     """
 
-    def __init__(self, fuzzyset, alpha, name=None):
+    def __init__(self, fuzzy_set, alpha: float, name: Union[str, None] = None):
         """
         Parameters
         ----------
-        formulas : 'list'
+        fuzzy_set : 'list'
             A list of 2-tuples. The first element in the tuple at index 0 is the formula
             equal to f(x) and the second element in the tuple at index 1 is the sympy.Interval
             where the formula in the tuple is valid.
@@ -94,7 +96,7 @@ class AlphaCut(DiscreteFuzzySet):
         """
         self.alpha = alpha
         formulas = []
-        for formula in fuzzyset.formulas:
+        for formula in fuzzy_set.formulas:
             if isinstance(formula[0], sympy.Expr):
                 # x = inversefunc(
                 #     lambdify(sympy.Symbol("x"), formula[0], "numpy"), y_values=alpha
@@ -131,7 +133,7 @@ class AlphaCut(DiscreteFuzzySet):
             else:
                 if formula[0] >= alpha:
                     formulas.append(formula)
-        DiscreteFuzzySet.__init__(self, formulas=formulas, name=name)
+        BaseDiscreteFuzzySet.__init__(self, formulas=formulas, name=name)
 
     def degree(self, element):
         """
@@ -156,10 +158,10 @@ class AlphaCut(DiscreteFuzzySet):
             membership = float(formula.subs(sympy.Symbol("x"), element))
         except AttributeError:
             membership = formula
-        return membership
+        return min(self.alpha, membership)
 
 
-class DiscreteFuzzyRelation(DiscreteFuzzySet):
+class DiscreteFuzzyRelation(BaseDiscreteFuzzySet):
     """
     A fuzzy relation is a fuzzy set of ordered pairs. This class is a subclass of DiscreteFuzzySet.
     The DiscreteFuzzyRelation class is used to represent a fuzzy relation between two universes of
@@ -167,7 +169,7 @@ class DiscreteFuzzyRelation(DiscreteFuzzySet):
     relation such as t-norm or s-norm discrete fuzzy relations.
     """
 
-    def __init__(self, formulas: List[OrdinaryDiscreteFuzzySet], name=None):
+    def __init__(self, formulas: List[DiscreteFuzzySet], name=None, mode: callable = min):
         """
         Parameters
         ----------
@@ -178,16 +180,16 @@ class DiscreteFuzzyRelation(DiscreteFuzzySet):
             This feature is useful when visualizing the fuzzy set, and its interaction with
             other fuzzy fets in the same space.
         """
-        DiscreteFuzzySet.__init__(self, formulas=formulas, name=name)
+        BaseDiscreteFuzzySet.__init__(self, formulas=formulas, name=name)
+        self.mode = mode
 
-    def degree(self, element: Union[int, float], mode: Callable = min):
+    def degree(self, element: Union[int, float]):
         """
         Calculates the degree of membership for the provided element value
         where element is a(n) int/float.
 
         Args:
             element: The element is from the universe of discourse X.
-            mode: The mode of the degree of membership; the default is min.
 
         Returns:
             The degree of membership for the element.
@@ -195,4 +197,4 @@ class DiscreteFuzzyRelation(DiscreteFuzzySet):
         degrees = []
         for formula in self.formulas:
             degrees.append(formula.degree(element))
-        return mode(degrees)
+        return self.mode(degrees)

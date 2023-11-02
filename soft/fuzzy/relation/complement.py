@@ -1,7 +1,7 @@
 """
 Implements the various fuzzy complement definitions for the discrete fuzzy sets.
 """
-from soft.fuzzy.sets.discrete import DiscreteFuzzySet
+from soft.fuzzy.sets.discrete import BaseDiscreteFuzzySet
 
 
 def standard_complement(fuzzy_set):
@@ -19,7 +19,7 @@ def standard_complement(fuzzy_set):
     success : 'bool'
     """
 
-    if isinstance(fuzzy_set, DiscreteFuzzySet):
+    if isinstance(fuzzy_set, BaseDiscreteFuzzySet):
         formulas = []
         for formula in fuzzy_set.formulas:
             formula = list(formula)
