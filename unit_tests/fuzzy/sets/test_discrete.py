@@ -60,6 +60,11 @@ class TestDiscreteFuzzySet(unittest.TestCase):
         assert axes.get_xlim() == (0, 100)
         assert axes.get_ylim() == (0, 1.1)
 
+        # now checking that removing the name changes it to an "Unnamed" DiscreteFuzzySet
+        discrete_fuzzy_set.name = None
+        figure, axes = discrete_fuzzy_set.plot(lower=0, upper=100, samples=100)
+        assert axes.get_title() == "Unnamed Fuzzy Set"
+
 
 class TestFuzzyVariable(unittest.TestCase):
     def __init__(self, *args, **kwargs):
@@ -85,3 +90,8 @@ class TestFuzzyVariable(unittest.TestCase):
         assert axes.get_ylabel() == "Degree of Membership"
         assert axes.get_xlim() == (0, 100)
         assert axes.get_ylim() == (0, 1.1)
+
+        # now checking that removing the name changes it to an "Unnamed" FuzzyVariable
+        self.fuzzy_variable.name = None
+        figure, axes = self.fuzzy_variable.plot(lower=0, upper=100, samples=100)
+        assert axes.get_title() == "Unnamed Fuzzy Variable"
