@@ -3,10 +3,10 @@ Test extensions of the BaseDiscreteFuzzySet, such as AlphaCut or SpecialFuzzySet
 """
 import unittest
 
-from soft.fuzzy.relation.extension import AlphaCut, SpecialFuzzySet
-from examples.fuzzy.sets.discrete.student import known, learned
 from soft.fuzzy.relation.snorm import StandardUnion
 from soft.fuzzy.relation.tnorm import StandardIntersection
+from soft.fuzzy.relation.extension import AlphaCut, SpecialFuzzySet
+from examples.fuzzy.sets.discrete.student import known, learned
 
 
 class TestAlphaCut(unittest.TestCase):
@@ -28,13 +28,9 @@ class TestDiscreteFuzzyRelation(unittest.TestCase):
         self.terms = [known(), learned()]
 
     def test_standard_intersection(self):
-        standard_intersection = StandardIntersection(
-            fuzzy_sets=self.terms
-        )
+        standard_intersection = StandardIntersection(fuzzy_sets=self.terms)
         assert standard_intersection.degree(87) == 0.4
 
     def test_standard_union(self):
-        standard_union = StandardUnion(
-            fuzzy_sets=self.terms
-        )
+        standard_union = StandardUnion(fuzzy_sets=self.terms)
         assert standard_union.degree(87) == 0.6

@@ -169,7 +169,9 @@ class DiscreteFuzzyRelation(BaseDiscreteFuzzySet):
     relation such as t-norm or s-norm discrete fuzzy relations.
     """
 
-    def __init__(self, formulas: List[DiscreteFuzzySet], name=None, mode: callable = min):
+    def __init__(
+        self, formulas: List[DiscreteFuzzySet], name=None, mode: callable = min
+    ):
         """
         Parameters
         ----------
