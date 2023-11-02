@@ -1,3 +1,6 @@
+"""
+Test the DiscreteFuzzySet and TestFuzzyVariable classes.
+"""
 import unittest
 
 from soft.fuzzy.sets.discrete import (
@@ -35,6 +38,7 @@ class TestDiscreteFuzzySet(unittest.TestCase):
         discrete_fuzzy_set = DiscreteFuzzySet(formulas=[], name="")
         assert len(discrete_fuzzy_set.formulas) == 0
         assert len(discrete_fuzzy_set.name) == 0
+        assert discrete_fuzzy_set.fetch(element=0.0) is None
 
     def test_create_discrete_fuzzy_set(self) -> None:
         """
