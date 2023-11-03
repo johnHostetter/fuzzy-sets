@@ -98,7 +98,9 @@ if __name__ == "__main__":
                 terms[idx], membership_to_fuzzy_term, terms[idx].name
             )
             alpha_cuts.append(
-                StandardIntersection([special_fuzzy_set, terms[idx]], name=f"A{idx + 1}")
+                StandardIntersection(
+                    [special_fuzzy_set, terms[idx]], name=f"A{idx + 1}"
+                )
             )
 
             # maximum membership principle
