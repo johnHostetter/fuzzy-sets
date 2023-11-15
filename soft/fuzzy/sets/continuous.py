@@ -77,9 +77,11 @@ class ContinuousFuzzySet(torch.nn.Module):
             self.mask = (widths > 0).int()  # keep only the valid fuzzy sets
 
         self.widths = torch.nn.parameter.Parameter(widths).float()
-        self.mask = torch.nn.Parameter(
-            self.mask.float(), requires_grad=False
-        )  # mask is parameter, so it can easily switch from CPU to GPU
+        # self.widths = widths.float()
+        self.mask = self.mask.float()
+        # self.mask = torch.nn.Parameter(
+        #     self.mask.float(), requires_grad=False
+        # )  # mask is parameter, so it can easily switch from CPU to GPU
         self.log_widths()  # update the stored log widths
 
     def log_widths(self) -> torch.Tensor:
@@ -91,7 +93,10 @@ class ContinuousFuzzySet(torch.nn.Module):
             The logarithm of the widths.
         """
         with torch.no_grad():
-            self._log_widths = torch.nn.parameter.Parameter(torch.log(self.widths))
+            # self._log_widths = torch.nn.parameter.Parameter(
+            #     torch.log(self.widths.detach())
+            # )
+            self._log_widths = torch.log(self.widths.detach())
             if torch.isinf(self._log_widths).any().item():
                 if torch.isclose(self.widths, torch.zeros(1), atol=1e-64).any():
                     # zero widths are problematic; change to near zero
@@ -273,6 +278,35 @@ class Gaussian(ContinuousFuzzySet):
         """
         observations = convert_to_tensor(observations)
 
+        # print(self.widths)
+        try:
+            for centers, widths in zip(self.centers, self.widths):
+                try:
+                    if centers.isnan().all() or widths.isnan().all():
+                        print("its broken")
+                        state_dictionary = self.state_dict()
+                        state_dictionary["centers"] = self.previous_centers
+                        state_dictionary["widths"] = self.previous_widths
+                        self.load_state_dict(state_dictionary)
+                        self.log_widths()
+                        observations = self.previous_observations
+                        # quit()
+                except IndexError:
+                    pass
+        except TypeError:
+            pass
+        self.previous_centers = self.centers.detach().clone()
+        self.previous_widths = self.widths.detach().clone()
+        self.previous_observations = observations.detach().clone()
+        # print(torch.exp(self._log_widths))
+        m = torch.nn.Sigmoid()
+        if self.widths.ndim == 2:
+            # calc_widths = torch.exp(self._log_widths).nan_to_num(
+            #     self.widths.max().item()
+            # ).min(-1).values.unsqueeze(-1) * m(torch.exp(self._log_widths))
+            calc_widths = torch.exp(self._log_widths)
+        else:
+            calc_widths = torch.exp(self._log_widths)
         return (
             torch.exp(
                 -1.0
@@ -281,7 +315,18 @@ class Gaussian(ContinuousFuzzySet):
                         observations.unsqueeze(dim=-1) - self.centers,
                         2,
                     )
-                    / (torch.pow(torch.exp(self._log_widths), 2) + 1e-32)
+                    / (
+                        2
+                        * (
+                            torch.pow(
+                                # torch.exp(self._log_widths),
+                                calc_widths,
+                                2,
+                            )
+                        )
+                        + 1e-32
+                    )
+                    # / (torch.pow(torch.exp(self._log_widths), 2) + 1e-32)
                 )
             )
             * self.mask
