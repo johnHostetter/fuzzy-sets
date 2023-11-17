@@ -284,53 +284,63 @@ class Gaussian(ContinuousFuzzySet):
                 try:
                     if centers.isnan().all() or widths.isnan().all():
                         print("its broken")
-                        state_dictionary = self.state_dict()
-                        state_dictionary["centers"] = self.previous_centers
-                        state_dictionary["widths"] = self.previous_widths
-                        self.load_state_dict(state_dictionary)
-                        self.log_widths()
-                        observations = self.previous_observations
+                        # state_dictionary = self.state_dict()
+                        # state_dictionary["centers"] = self.previous_centers
+                        # state_dictionary["widths"] = self.previous_widths
+                        # self.load_state_dict(state_dictionary)
+                        # self.log_widths()
+                        # observations = self.previous_observations
                         # quit()
                 except IndexError:
                     pass
         except TypeError:
             pass
-        self.previous_centers = self.centers.detach().clone()
-        self.previous_widths = self.widths.detach().clone()
-        self.previous_observations = observations.detach().clone()
+        # self.previous_centers = self.centers.detach().clone()
+        # self.previous_widths = self.widths.detach().clone()
+        # self.previous_observations = observations.detach().clone()
         # print(torch.exp(self._log_widths))
         m = torch.nn.Sigmoid()
         if self.widths.ndim == 2:
             # calc_widths = torch.exp(self._log_widths).nan_to_num(
             #     self.widths.max().item()
             # ).min(-1).values.unsqueeze(-1) * m(torch.exp(self._log_widths))
-            calc_widths = torch.exp(self._log_widths)
+            calc_widths = m(torch.exp(self._log_widths))
         else:
             calc_widths = torch.exp(self._log_widths)
-        return (
-            torch.exp(
-                -1.0
-                * (
-                    torch.pow(
-                        observations.unsqueeze(dim=-1) - self.centers,
-                        2,
-                    )
-                    / (
-                        2
-                        * (
-                            torch.pow(
-                                # torch.exp(self._log_widths),
-                                calc_widths,
-                                2,
-                            )
-                        )
-                        + 1e-32
-                    )
-                    # / (torch.pow(torch.exp(self._log_widths), 2) + 1e-32)
+        return self.mask * (
+            1
+            / (
+                torch.pow(
+                    (self.centers - observations.unsqueeze(dim=-1)) / 0.5 * self.widths,
+                    2,
                 )
+                + 1
             )
-            * self.mask
         )
+        # return (
+        #     torch.exp(
+        #         -1.0
+        #         * (
+        #             torch.pow(
+        #                 observations.unsqueeze(dim=-1) - self.centers,
+        #                 2,
+        #             )
+        #             / (
+        #                 2
+        #                 * (
+        #                     torch.pow(
+        #                         # torch.exp(self._log_widths),
+        #                         calc_widths,
+        #                         2,
+        #                     )
+        #                 )
+        #                 + 1e-32
+        #             )
+        #             # / (torch.pow(torch.exp(self._log_widths), 2) + 1e-32)
+        #         )
+        #     )
+        #     * self.mask
+        # )
 
 
 class Triangular(ContinuousFuzzySet):
