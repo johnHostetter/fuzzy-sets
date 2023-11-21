@@ -1,10 +1,13 @@
 """
 Implements the continuous fuzzy sets, using PyTorch.
 """
+from typing import List
+
 import torch
 import torchquad
 import numpy as np
 
+# from soft.computing.organize import stack_granules
 from utilities.functions import convert_to_tensor
 
 
@@ -49,6 +52,16 @@ class ContinuousFuzzySet(torch.nn.Module):
 
     def __init__(self, in_features, centers=None, widths=None, labels=None):
         super().__init__()
+        self.in_features, self._log_widths, self.labels = None, None, None
+        self.constructor(
+            in_features=in_features, centers=centers, widths=widths, labels=labels
+        )
+
+    @staticmethod
+    def broadcast_modification(fuzzy_set: "ContinuousFuzzySet", *args, **kwargs):
+        pass
+
+    def constructor(self, in_features, centers=None, widths=None, labels=None):
         self.in_features = in_features
         self._log_widths = None
         self.labels = labels
@@ -68,20 +81,19 @@ class ContinuousFuzzySet(torch.nn.Module):
             # in other words, since gradient descent may make the widths negative,
             # we nullify that effect
             widths = torch.rand(self.in_features)
-            self.mask = torch.ones(widths.shape)
+            mask = torch.ones(widths.shape)
         else:
             # we assume the widths are given to us are within (0, 1)
             widths = convert_to_tensor(widths)
             # negative widths are a special flag to indicate that the fuzzy set
             # at that location does not actually exist
-            self.mask = (widths > 0).int()  # keep only the valid fuzzy sets
+            mask = (widths > 0).int()  # keep only the valid fuzzy sets
 
         self.widths = torch.nn.parameter.Parameter(widths).float()
         # self.widths = widths.float()
-        self.mask = self.mask.float()
-        # self.mask = torch.nn.Parameter(
-        #     self.mask.float(), requires_grad=False
-        # )  # mask is parameter, so it can easily switch from CPU to GPU
+        self.mask = torch.nn.Parameter(
+            mask.float(), requires_grad=False
+        )  # mask is parameter, so it can easily switch from CPU to GPU
         self.log_widths()  # update the stored log widths
 
     def log_widths(self) -> torch.Tensor:
@@ -217,6 +229,140 @@ class ContinuousFuzzySet(torch.nn.Module):
             sets.append(Gaussian(1, center.item(), width.item()))
         return np.array(sets).reshape(self.centers.shape)
 
+    def split_by_variables(self) -> List["ContinuousFuzzySet"]:
+        """
+        This operation takes the ContinuousFuzzySet and converts it to a list of ContinuousFuzzySet
+        objects, if applicable. For example, rather than using a single Gaussian object to represent
+        all Gaussian membership functions in the input space, this function will convert that to a
+        list of Gaussian objects, where each Gaussian function is defined and restricted to a single
+        input dimension. This is particularly helpful when modifying along a specific dimension.
+
+        Returns:
+            A list of ContinuousFuzzySet objects, where the length is equal to the number
+            of input dimensions.
+        """
+        variables = []
+        for centers, widths in zip(self.centers, self.widths):
+            centers = centers.cpu().detach().tolist()
+            widths = widths.cpu().detach().tolist()
+
+            # the centers and widths must be trimmed to remove missing fuzzy set placeholders
+            trimmed_centers, trimmed_widths = [], []
+            for center, width in zip(centers, widths):
+                if width > 0:
+                    # if an input dimension has less fuzzy sets than another,
+                    # then it is possible for the width entry to have '-1' as a
+                    # placeholder indicating so
+                    trimmed_centers.append(center)
+                    trimmed_widths.append(width)
+
+            in_features = len(trimmed_centers)
+            variables.append(
+                type(self)(
+                    in_features=in_features,
+                    centers=trimmed_centers,
+                    widths=trimmed_widths,
+                )
+            )
+
+        return variables
+
+    def count_granule_terms(self, granules: List["ContinuousFuzzySet"]) -> np.ndarray:
+        """
+        Count the number of granules that occur in each dimension.
+
+        Args:
+            granules: A list of granules, where each granule is a ContinuousFuzzySet object.
+
+        Returns:
+            A Numpy array with shape (len(granules), ) and the data type is integer.
+        """
+        return np.array(
+            [
+                params.centers.size(dim=0) if params.centers.dim() > 0 else 0
+                for params in granules
+            ]
+        ).astype("int32")
+
+    def stack_granules(
+        self,
+        granules: List["ContinuousFuzzySet"],
+        in_place=False,
+        broadcast_set_modified=None,
+    ) -> "ContinuousFuzzySet":
+        """
+        Create a condensed and stacked representation of the given granules.
+
+        Args:
+            granules: A list of granules, where each granule is a ContinuousFuzzySet object.
+
+        Returns:
+            A ContinuousFuzzySet object.
+        """
+        if list(granules)[0].training:
+            missing_center, missing_width = 0, -1
+        else:
+            missing_center = missing_width = torch.nan
+
+        centers = torch.vstack(
+            [
+                torch.nn.functional.pad(
+                    params.centers,
+                    pad=(
+                        0,
+                        self.count_granule_terms(granules).max()
+                        - params.centers.shape[0],
+                    ),
+                    mode="constant",
+                    value=missing_center,
+                )
+                if params.centers.dim() > 0
+                else torch.tensor(missing_center).repeat(
+                    self.count_granule_terms(granules).max()
+                )
+                for params in granules
+            ]
+        )
+        widths = torch.vstack(
+            [
+                torch.nn.functional.pad(
+                    params.widths,
+                    pad=(
+                        0,
+                        self.count_granule_terms(granules).max()
+                        - params.widths.shape[0],
+                    ),
+                    mode="constant",
+                    value=missing_width,
+                )
+                if params.centers.dim() > 0
+                else torch.tensor(missing_center).repeat(
+                    self.count_granule_terms(granules).max()
+                )
+                for params in granules
+            ]
+        )
+
+        if in_place:
+            # directly modify *this* ContinuousFuzzySet object
+            with torch.no_grad():
+                print("Expanding the number of fuzzy sets!!!")
+                self.constructor(
+                    in_features=len(granules),
+                    centers=centers.cpu().detach().tolist(),
+                    widths=widths.cpu().detach().tolist(),
+                )
+                print(self.centers.shape)
+            self.broadcast_modification(self)
+        else:
+            # prepare a condensed and stacked representation of the granules
+            mf_type = type(granules[0])
+            return mf_type(
+                in_features=len(granules),
+                centers=centers.cpu().detach().tolist(),
+                widths=widths.cpu().detach().tolist(),
+            )
+
     def forward(self, observations):
         """
         Calculate the membership of an element to this fuzzy set; not implemented as this is a
@@ -307,7 +453,7 @@ class Gaussian(ContinuousFuzzySet):
             calc_widths = m(torch.exp(self._log_widths))
         else:
             calc_widths = torch.exp(self._log_widths)
-        return self.mask * (
+        mu = self.mask * (
             1
             / (
                 torch.pow(
@@ -317,6 +463,49 @@ class Gaussian(ContinuousFuzzySet):
                 + 1
             )
         )
+
+        if self.centers.ndim == 2:
+            epsilon = 0.6
+            new_centers = (observations * (mu.max(dim=-1).values <= epsilon)) + (
+                (mu.max(dim=-1).values > epsilon) / 0
+            ).nan_to_num(0.0, posinf=torch.nan)
+            nc: List[torch.Tensor] = [
+                torch.tensor(
+                    list(
+                        set(
+                            new_centers[:, var_idx][
+                                ~new_centers[:, var_idx].isnan()
+                            ].tolist()
+                        )
+                    ),
+                    dtype=self.centers.dtype,
+                )
+                for var_idx in range(new_centers.shape[-1])
+            ]
+
+            sets: List[ContinuousFuzzySet] = self.split_by_variables()
+            for n, s in zip(nc, sets):
+                s.extend(
+                    centers=n,
+                    widths=torch.randn_like(n),
+                )
+
+            self.stack_granules(sets, in_place=True)
+
+            mu = self.mask * (
+                1
+                / (
+                    torch.pow(
+                        (self.centers - observations.unsqueeze(dim=-1))
+                        / 0.5
+                        * self.widths,
+                        2,
+                    )
+                    + 1
+                )
+            )
+
+        return mu
         # return (
         #     torch.exp(
         #         -1.0
