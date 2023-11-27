@@ -56,6 +56,8 @@ class ContinuousFuzzySet(torch.nn.Module):
         self.constructor(
             in_features=in_features, centers=centers, widths=widths, labels=labels
         )
+        self.modules_list = torch.nn.ModuleList([])
+        self.expandable = False
 
     @staticmethod
     def broadcast_modification(fuzzy_set: "ContinuousFuzzySet", *args, **kwargs):
@@ -91,9 +93,10 @@ class ContinuousFuzzySet(torch.nn.Module):
 
         self.widths = torch.nn.parameter.Parameter(widths).float()
         # self.widths = widths.float()
-        self.mask = torch.nn.Parameter(
-            mask.float(), requires_grad=False
-        )  # mask is parameter, so it can easily switch from CPU to GPU
+        # self.mask = torch.nn.Parameter(
+        #     mask.float(), requires_grad=False
+        # )  # mask is parameter, so it can easily switch from CPU to GPU
+        self.mask = mask
         self.log_widths()  # update the stored log widths
 
     def log_widths(self) -> torch.Tensor:
@@ -410,6 +413,37 @@ class Gaussian(ContinuousFuzzySet):
         """
         self.widths = sigmas
 
+    def calculate_membership(self, observations):
+        mu = self.mask.to(observations.device) * (
+            1
+            / (
+                torch.pow(
+                    (
+                        self.centers.to(observations.device)
+                        - observations.unsqueeze(dim=-1)
+                    )
+                    / (0.5 * self.widths.to(observations.device)),
+                    2,
+                )
+                + 1
+            )
+        )
+
+        if len(self.modules_list) > 0:
+            returned_mu = mu
+            for module in self.modules_list:
+                other_mu, _ = module(observations)
+                returned_mu = torch.cat([returned_mu, other_mu], dim=-1)
+
+            return returned_mu
+        return mu
+
+    def get_mask(self):
+        mask = (self.widths == -1.0).float()
+        for module in self.modules_list:
+            mask = torch.cat([mask, module.mask.to(mask.device)], dim=-1)
+        return mask
+
     def forward(self, observations):
         """
         Forward pass of the function. Applies the function to the input elementwise.
@@ -425,50 +459,42 @@ class Gaussian(ContinuousFuzzySet):
         observations = convert_to_tensor(observations)
 
         # print(self.widths)
-        try:
-            for centers, widths in zip(self.centers, self.widths):
-                try:
-                    if centers.isnan().all() or widths.isnan().all():
-                        print("its broken")
-                        # state_dictionary = self.state_dict()
-                        # state_dictionary["centers"] = self.previous_centers
-                        # state_dictionary["widths"] = self.previous_widths
-                        # self.load_state_dict(state_dictionary)
-                        # self.log_widths()
-                        # observations = self.previous_observations
-                        # quit()
-                except IndexError:
-                    pass
-        except TypeError:
-            pass
+        # try:
+        #     for centers, widths in zip(self.centers, self.widths):
+        #         try:
+        #             if centers.isnan().all() or widths.isnan().all():
+        #                 print("its broken")
+        #                 # state_dictionary = self.state_dict()
+        #                 # state_dictionary["centers"] = self.previous_centers
+        #                 # state_dictionary["widths"] = self.previous_widths
+        #                 # self.load_state_dict(state_dictionary)
+        #                 # self.log_widths()
+        #                 # observations = self.previous_observations
+        #                 # quit()
+        #         except IndexError:
+        #             pass
+        # except TypeError:
+        #     pass
         # self.previous_centers = self.centers.detach().clone()
         # self.previous_widths = self.widths.detach().clone()
         # self.previous_observations = observations.detach().clone()
         # print(torch.exp(self._log_widths))
-        m = torch.nn.Sigmoid()
-        if self.widths.ndim == 2:
-            # calc_widths = torch.exp(self._log_widths).nan_to_num(
-            #     self.widths.max().item()
-            # ).min(-1).values.unsqueeze(-1) * m(torch.exp(self._log_widths))
-            calc_widths = m(torch.exp(self._log_widths))
-        else:
-            calc_widths = torch.exp(self._log_widths)
-        mu = self.mask * (
-            1
-            / (
-                torch.pow(
-                    (self.centers - observations.unsqueeze(dim=-1)) / 0.5 * self.widths,
-                    2,
-                )
-                + 1
-            )
-        )
+        # m = torch.nn.Sigmoid()
+        # if self.widths.ndim == 2:
+        #     # calc_widths = torch.exp(self._log_widths).nan_to_num(
+        #     #     self.widths.max().item()
+        #     # ).min(-1).values.unsqueeze(-1) * m(torch.exp(self._log_widths))
+        #     calc_widths = m(torch.exp(self._log_widths))
+        # else:
+        #     calc_widths = torch.exp(self._log_widths)
+        mu = self.calculate_membership(observations)
 
-        if self.centers.ndim == 2:
-            epsilon = 0.6
+        if self.centers.ndim == 2 and self.expandable:
+            epsilon = 0.5
             new_centers = (observations * (mu.max(dim=-1).values <= epsilon)) + (
                 (mu.max(dim=-1).values > epsilon) / 0
             ).nan_to_num(0.0, posinf=torch.nan)
+            # print(mu.max(dim=-1).values, observations)
             nc: List[torch.Tensor] = [
                 torch.tensor(
                     list(
@@ -483,29 +509,47 @@ class Gaussian(ContinuousFuzzySet):
                 for var_idx in range(new_centers.shape[-1])
             ]
 
-            sets: List[ContinuousFuzzySet] = self.split_by_variables()
-            for n, s in zip(nc, sets):
-                s.extend(
-                    centers=n,
-                    widths=torch.randn_like(n),
-                )
+            # editing in-place (doesn't work with arbitrary optimizers
+            # sets: List[ContinuousFuzzySet] = self.split_by_variables()
+            # for n, s in zip(nc, sets):
+            #     s.extend(
+            #         centers=n,
+            #         widths=torch.randn_like(n),
+            #     )
+            #
+            # self.stack_granules(sets, in_place=True)
 
-            self.stack_granules(sets, in_place=True)
-
-            mu = self.mask * (
-                1
-                / (
-                    torch.pow(
-                        (self.centers - observations.unsqueeze(dim=-1))
-                        / 0.5
-                        * self.widths,
-                        2,
+            # doing some trick w. dynamically expandable networks
+            sets: List[ContinuousFuzzySet] = []
+            empty_sets: List[int] = []
+            for idx, n in enumerate(nc):
+                if len(n) == 0:
+                    empty_sets.append(idx)
+                sets.append(
+                    Gaussian(
+                        in_features=len(n),
+                        centers=n,
+                        widths=torch.randn_like(n).abs(),
                     )
-                    + 1
                 )
-            )
+            if len(sets) > 0 and len(empty_sets) < len(sets):
+                g = self.stack_granules(sets)
+                g.expandable = False  # stop recursive calls
+                _, _ = g(observations)
+                new_idx = len(self.modules_list)
+                print(
+                    f"adding {g.centers.shape}; num of layers: {len(self.modules_list)}"
+                )
+                print(f"to dimensions: {set(range(len(sets))) - set(empty_sets)}")
+                self.modules_list.add_module(str(new_idx), g)
+                self.broadcast_modification(self)
 
-        return mu
+                mu = self.calculate_membership(observations)
+
+        if self.expandable:
+            return mu, self.get_mask()
+        else:
+            return mu, None
         # return (
         #     torch.exp(
         #         -1.0
