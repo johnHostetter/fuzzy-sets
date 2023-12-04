@@ -429,6 +429,9 @@ class Gaussian(ContinuousFuzzySet):
             )
         )
 
+        # if mu.grad_fn is None:
+        #     print("memberships' autograd are not being tracked")
+
         if len(self.modules_list) > 0:
             returned_mu = mu
             for module in self.modules_list:
@@ -441,7 +444,9 @@ class Gaussian(ContinuousFuzzySet):
     def get_mask(self):
         mask = (self.widths == -1.0).float()
         for module in self.modules_list:
-            mask = torch.cat([mask, module.mask.to(mask.device)], dim=-1)
+            mask = torch.cat(
+                [mask, (module.widths == -1).float().to(mask.device)], dim=-1
+            )
         return mask
 
     def forward(self, observations):
@@ -488,6 +493,9 @@ class Gaussian(ContinuousFuzzySet):
         # else:
         #     calc_widths = torch.exp(self._log_widths)
         mu = self.calculate_membership(observations)
+
+        # if mu.grad_fn is None and self.expandable:
+        #     print("grad_fn of mu is None, but might be in target net tho")
 
         if self.centers.ndim == 2 and self.expandable:
             epsilon = 0.5
