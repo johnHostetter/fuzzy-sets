@@ -519,8 +519,9 @@ class Gaussian(ContinuousFuzzySet):
         self.widths = sigmas
 
     def get_mask(self) -> torch.Tensor:
+        # mask has value of 1 if you should ignore corresponding degree in same i'th and j'th place
         return (self.widths == -1.0).float()
-        return (torch.isclose(self.widths, torch.zeros(1))).float()
+        # return (torch.isclose(self.widths, torch.zeros(1))).float()
 
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
         return (1 - self.get_mask()).to(observations.device) * (
