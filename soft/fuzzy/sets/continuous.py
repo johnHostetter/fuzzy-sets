@@ -1,12 +1,12 @@
 """
 Implements the continuous fuzzy sets, using PyTorch.
 """
-from typing import List, NoReturn, Union, Tuple, Any
+from collections import namedtuple
+from typing import List, NoReturn, Union, Tuple
 
 import torch
 import torchquad
 import numpy as np
-from collections import namedtuple
 
 from utilities.functions import convert_to_tensor
 
@@ -93,10 +93,9 @@ class GroupedFuzzySets(torch.nn.Module):
                     for module in modules_list:
                         module_attributes.append(getattr(module, item))
                     return torch.cat(module_attributes, dim=-1)
-                else:
-                    raise ValueError(
-                        "The torch.nn.ModuleList of GroupedFuzzySets is empty."
-                    )
+                raise ValueError(
+                    "The torch.nn.ModuleList of GroupedFuzzySets is empty."
+                )
             return object.__getattribute__(self, item)
         except AttributeError:
             return self.__getattr__(item)
@@ -109,8 +108,7 @@ class GroupedFuzzySets(torch.nn.Module):
             for module in self.modules_list:
                 module_masks.append(module.get_mask().float())
             return torch.cat(module_masks, dim=-1)
-        else:
-            raise ValueError("The torch.nn.ModuleList of GroupedFuzzySets is empty.")
+        raise ValueError("The torch.nn.ModuleList of GroupedFuzzySets is empty.")
 
     def calculate_module_responses(
         self, observations
@@ -128,8 +126,7 @@ class GroupedFuzzySets(torch.nn.Module):
                 module_responses.append(module_response)
                 module_masks.append(module_mask.float())
             return torch.cat(module_responses, dim=-1), torch.cat(module_masks, dim=-1)
-        else:
-            raise ValueError("The torch.nn.ModuleList of GroupedFuzzySets is empty.")
+        raise ValueError("The torch.nn.ModuleList of GroupedFuzzySets is empty.")
 
     def forward(self, observations) -> Membership:
         observations = convert_to_tensor(observations)
