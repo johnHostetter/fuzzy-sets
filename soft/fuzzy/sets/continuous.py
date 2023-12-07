@@ -1,14 +1,28 @@
 """
 Implements the continuous fuzzy sets, using PyTorch.
 """
-from typing import List, NoReturn, Union, Tuple
+from typing import List, NoReturn, Union, Tuple, Any
 
 import torch
 import torchquad
 import numpy as np
+from collections import namedtuple
 
-# from soft.computing.organize import stack_granules
 from utilities.functions import convert_to_tensor
+
+
+class Membership(namedtuple(typename="Membership", field_names=("degrees", "mask"))):
+    """
+    The Membership class contains information describing both membership *degrees*
+    and membership *mask*. The membership degrees are often the degree of membership, truth,
+    activation, applicability, etc. of a fuzzy set, or more generally, a concept. The membership
+    mask is shaped such that it helps filter or 'mask' out membership degrees that belong to
+    fuzzy sets or concepts that are not actually real.
+
+    The distinction between the two is made as applying the mask will zero out membership degrees
+    that are not real, but this might be incorrectly interpreted as having zero degree of
+    membership to the fuzzy set.
+    """
 
 
 class LogisticCurve(torch.nn.Module):
@@ -68,6 +82,35 @@ class GroupedFuzzySets(torch.nn.Module):
         self.expandable = expandable
         self.epsilon = 0.5  # epsilon-completeness
 
+    # def __getattr__(
+    #     self, name: str
+    # ) -> Any:  # e.g., GroupedFuzzySet's 'centers' or 'widths'
+    #     # this code will dynamically create the attribute *if it is missing*
+    #
+    #     # for example, self.centers and self.widths are missing but are required for most code
+    #
+    #     # GroupedFuzzySets' centers and widths are defined over the self.modules_list
+    #
+    #     # so we must dynamically fetch this information
+    #
+    #     if name in ("centers", "widths"):
+    #         modules_list = self.__dict__["_modules"]["modules_list"]
+    #         if len(modules_list) > 0:
+    #             module_attributes: List[
+    #                 torch.Tensor
+    #             ] = []  # the secondary response denoting module filter
+    #             for module in modules_list:
+    #                 if name in module.__dict__["_parameters"]:
+    #                     module_attributes.append(module.__dict__["_parameters"][name])
+    #                 else:
+    #                     module_attributes.append(module.__dict__["_modules"][name])
+    #             return torch.cat(module_attributes, dim=-1)
+    #         else:
+    #             raise ValueError(
+    #                 "The torch.nn.ModuleList of GroupedFuzzySets is empty."
+    #             )
+    #     object.__getattribute__(self, name)
+
     def get_mask(self) -> Union[torch.Tensor, NoReturn]:
         if len(self.modules_list) > 0:
             module_masks: List[
@@ -98,7 +141,7 @@ class GroupedFuzzySets(torch.nn.Module):
         else:
             raise ValueError("The torch.nn.ModuleList of GroupedFuzzySets is empty.")
 
-    def forward(self, observations):
+    def forward(self, observations) -> Membership:
         observations = convert_to_tensor(observations)
         module_responses, module_masks = self.calculate_module_responses(observations)
 
@@ -152,7 +195,7 @@ class GroupedFuzzySets(torch.nn.Module):
                     observations
                 )
 
-        return module_responses, module_masks
+        return Membership(degrees=module_responses, mask=module_masks)
 
 
 class ContinuousFuzzySet(torch.nn.Module):
@@ -216,6 +259,11 @@ class ContinuousFuzzySet(torch.nn.Module):
         self.mask = mask
         self.log_widths()  # update the stored log widths
 
+    def get_mask(self) -> torch.Tensor:
+        # mask has value of 1 if you should ignore corresponding degree in same i'th and j'th place
+        return (self.widths == -1.0).float()
+        # return (torch.isclose(self.widths, torch.zeros(1))).float()
+
     def log_widths(self) -> torch.Tensor:
         """
         Calculate the logarithm of the widths. Used for FLCs where the backpropagation may need
@@ -275,7 +323,7 @@ class ContinuousFuzzySet(torch.nn.Module):
             self.widths = torch.nn.Parameter(torch.cat([self.widths, widths]))
         self.log_widths()  # update the stored log widths
 
-    def area_helper(self, fuzzy_sets):
+    def area_helper(self, fuzzy_sets) -> List[float]:
         """
         Splits the fuzzy set (if representing a fuzzy variable) into individual fuzzy sets (the
         fuzzy variable's possible fuzzy terms), and does so recursively until the base case is
@@ -300,7 +348,7 @@ class ContinuousFuzzySet(torch.nn.Module):
             else:
                 simpson_method = torchquad.Simpson()
                 area = simpson_method.integrate(
-                    fuzzy_set,
+                    fuzzy_set.calculate_membership,
                     dim=1,
                     N=101,
                     integration_domain=[
@@ -320,7 +368,7 @@ class ContinuousFuzzySet(torch.nn.Module):
 
         return results
 
-    def area(self):
+    def area(self) -> torch.Tensor:
         """
         Calculate the area beneath the fuzzy curve (i.e., membership function) using torchquad.
 
@@ -334,7 +382,7 @@ class ContinuousFuzzySet(torch.nn.Module):
         """
         return torch.tensor(self.area_helper(self))
 
-    def split(self):
+    def split(self) -> np.ndarray:
         """
         Efficient implementation of splitting *this* (self) fuzzy set, where each row contains the
         fuzzy sets for a fuzzy variable. For example, if we index the result with [0][1], then we
@@ -470,7 +518,7 @@ class ContinuousFuzzySet(torch.nn.Module):
             widths=widths.cpu().detach().tolist(),
         )
 
-    def forward(self, observations):
+    def forward(self, observations) -> NotImplementedError:
         """
         Calculate the membership of an element to this fuzzy set; not implemented as this is a
         generic and abstract class. This method is overridden by a class that specifies the type
@@ -499,7 +547,7 @@ class Gaussian(ContinuousFuzzySet):
         super().__init__(in_features, centers=centers, widths=widths, labels=labels)
 
     @property
-    def sigmas(self):
+    def sigmas(self) -> torch.Tensor:
         """
         Gets the sigma for the Gaussian fuzzy set; alias for the 'widths' parameter.
 
@@ -509,7 +557,7 @@ class Gaussian(ContinuousFuzzySet):
         return self.widths
 
     @sigmas.setter
-    def sigmas(self, sigmas):
+    def sigmas(self, sigmas) -> None:
         """
         Sets the sigma for the Gaussian fuzzy set; alias for the 'widths' parameter.
 
@@ -518,28 +566,40 @@ class Gaussian(ContinuousFuzzySet):
         """
         self.widths = sigmas
 
-    def get_mask(self) -> torch.Tensor:
-        # mask has value of 1 if you should ignore corresponding degree in same i'th and j'th place
-        return (self.widths == -1.0).float()
-        # return (torch.isclose(self.widths, torch.zeros(1))).float()
+    # def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
+    #     # this is lorentzian
+    #     return (1 - self.get_mask()).to(observations.device) * (
+    #         1
+    #         / (
+    #             torch.pow(
+    #                 (
+    #                     self.centers.to(observations.device)
+    #                     - observations.unsqueeze(dim=-1)
+    #                 )
+    #                 / (0.5 * self.widths.to(observations.device)),
+    #                 2,
+    #             )
+    #             + 1
+    #         )
+    #     )
 
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
-        return (1 - self.get_mask()).to(observations.device) * (
-            1
-            / (
-                torch.pow(
-                    (
-                        self.centers.to(observations.device)
-                        - observations.unsqueeze(dim=-1)
+        # this is Gaussian
+        return (
+            torch.exp(
+                -1.0
+                * (
+                    torch.pow(
+                        observations.unsqueeze(dim=-1) - self.centers,
+                        2,
                     )
-                    / (0.5 * self.widths.to(observations.device)),
-                    2,
+                    / (torch.pow(torch.exp(self._log_widths), 2) + 1e-32)
                 )
-                + 1
             )
+            * self.mask
         )
 
-    def forward(self, observations):
+    def forward(self, observations) -> Membership:
         """
         Forward pass of the function. Applies the function to the input elementwise.
 
@@ -552,7 +612,9 @@ class Gaussian(ContinuousFuzzySet):
             The membership degrees of the observations for the Gaussian fuzzy set.
         """
         observations = convert_to_tensor(observations)
-        return self.calculate_membership(observations), self.get_mask()
+        return Membership(
+            degrees=self.calculate_membership(observations), mask=self.get_mask()
+        )
         # return (
         #     torch.exp(
         #         -1.0
@@ -587,7 +649,7 @@ class Triangular(ContinuousFuzzySet):
     def __init__(self, in_features, centers=None, widths=None, labels=None):
         super().__init__(in_features, centers=centers, widths=widths, labels=labels)
 
-    def forward(self, observations):
+    def forward(self, observations) -> Membership:
         """
         Forward pass of the function. Applies the function to the input elementwise.
 
@@ -601,12 +663,15 @@ class Triangular(ContinuousFuzzySet):
         """
         observations = convert_to_tensor(observations)
 
-        return (
-            torch.max(
-                1.0
-                - (1.0 / torch.exp(self._log_widths))
-                * torch.abs(observations.unsqueeze(dim=-1) - self.centers),
-                torch.tensor(0.0),
-            )
-            * self.mask
+        return Membership(
+            degrees=(
+                torch.max(
+                    1.0
+                    - (1.0 / torch.exp(self._log_widths))
+                    * torch.abs(observations.unsqueeze(dim=-1) - self.centers),
+                    torch.tensor(0.0),
+                )
+                * self.mask
+            ),
+            mask=self.get_mask(),
         )
