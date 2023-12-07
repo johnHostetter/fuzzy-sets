@@ -9,7 +9,7 @@ import numpy as np
 import torch
 
 from utilities.reproducibility import set_rng
-from soft.fuzzy.sets.continuous import LogisticCurve, Gaussian, Triangular
+from soft.fuzzy.sets.continuous.impl import LogisticCurve, Gaussian, Triangular
 
 
 def gaussian_numpy(element: torch.Tensor, center: np.ndarray, sigma: np.ndarray):
