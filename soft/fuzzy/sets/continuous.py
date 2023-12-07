@@ -82,34 +82,24 @@ class GroupedFuzzySets(torch.nn.Module):
         self.expandable = expandable
         self.epsilon = 0.5  # epsilon-completeness
 
-    # def __getattr__(
-    #     self, name: str
-    # ) -> Any:  # e.g., GroupedFuzzySet's 'centers' or 'widths'
-    #     # this code will dynamically create the attribute *if it is missing*
-    #
-    #     # for example, self.centers and self.widths are missing but are required for most code
-    #
-    #     # GroupedFuzzySets' centers and widths are defined over the self.modules_list
-    #
-    #     # so we must dynamically fetch this information
-    #
-    #     if name in ("centers", "widths"):
-    #         modules_list = self.__dict__["_modules"]["modules_list"]
-    #         if len(modules_list) > 0:
-    #             module_attributes: List[
-    #                 torch.Tensor
-    #             ] = []  # the secondary response denoting module filter
-    #             for module in modules_list:
-    #                 if name in module.__dict__["_parameters"]:
-    #                     module_attributes.append(module.__dict__["_parameters"][name])
-    #                 else:
-    #                     module_attributes.append(module.__dict__["_modules"][name])
-    #             return torch.cat(module_attributes, dim=-1)
-    #         else:
-    #             raise ValueError(
-    #                 "The torch.nn.ModuleList of GroupedFuzzySets is empty."
-    #             )
-    #     object.__getattribute__(self, name)
+    def __getattribute__(self, item):
+        try:
+            if item in ("centers", "widths", "sigmas"):
+                modules_list = self.__dict__["_modules"]["modules_list"]
+                if len(modules_list) > 0:
+                    module_attributes: List[
+                        torch.Tensor
+                    ] = []  # the secondary response denoting module filter
+                    for module in modules_list:
+                        module_attributes.append(getattr(module, item))
+                    return torch.cat(module_attributes, dim=-1)
+                else:
+                    raise ValueError(
+                        "The torch.nn.ModuleList of GroupedFuzzySets is empty."
+                    )
+            return object.__getattribute__(self, item)
+        except AttributeError:
+            return self.__getattr__(item)
 
     def get_mask(self) -> Union[torch.Tensor, NoReturn]:
         if len(self.modules_list) > 0:
