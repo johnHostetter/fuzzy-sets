@@ -208,14 +208,13 @@ class ContinuousFuzzySet(torch.nn.Module):
     def __init__(self, in_features, centers=None, widths=None, labels=None):
         super().__init__()
         self.centers, self.widths, self.labels = None, None, None
-        self.in_features, self._log_widths, self.mask = None, None, None
+        self.in_features, self.mask = None, None
         self.constructor(
             in_features=in_features, centers=centers, widths=widths, labels=labels
         )
 
     def constructor(self, in_features, centers=None, widths=None, labels=None):
         self.in_features = in_features
-        self._log_widths = None
         self.labels = labels
 
         # initialize centers
@@ -242,41 +241,11 @@ class ContinuousFuzzySet(torch.nn.Module):
             mask = (widths > 0).int()  # keep only the valid fuzzy sets
 
         self.widths = torch.nn.parameter.Parameter(widths).float()
-        # self.widths = widths.float()
-        # self.mask = torch.nn.Parameter(
-        #     mask.float(), requires_grad=False
-        # )  # mask is parameter, so it can easily switch from CPU to GPU
         self.mask = mask
-        self.log_widths()  # update the stored log widths
 
     def get_mask(self) -> torch.Tensor:
         # mask has value of 1 if you should ignore corresponding degree in same i'th and j'th place
         return (self.widths == -1.0).float()
-        # return (torch.isclose(self.widths, torch.zeros(1))).float()
-
-    def log_widths(self) -> torch.Tensor:
-        """
-        Calculate the logarithm of the widths. Used for FLCs where the backpropagation may need
-        to update the widths, and zero or negative values need to be avoided.
-
-        Returns:
-            The logarithm of the widths.
-        """
-        with torch.no_grad():
-            # self._log_widths = torch.nn.parameter.Parameter(
-            #     torch.log(self.widths.detach())
-            # )
-            self._log_widths = torch.log(self.widths.detach())
-            if torch.isinf(self._log_widths).any().item():
-                if torch.isclose(self.widths, torch.zeros(1), atol=1e-64).any():
-                    # zero widths are problematic; change to near zero
-                    self.widths[torch.isclose(self.widths, torch.zeros(1))] = 1e-32
-                    # then call the method again (w/ widths now all non-zero)
-                    self.log_widths()
-                else:
-                    # unrecognized error
-                    raise ValueError("Some widths are infinite, which is not allowed.")
-        return self._log_widths
 
     def reshape_parameters(self):
         """
@@ -290,7 +259,6 @@ class ContinuousFuzzySet(torch.nn.Module):
             self.centers = torch.nn.Parameter(self.centers.reshape(1))
         if self.widths.nelement() == 1:
             self.widths = torch.nn.Parameter(self.widths.reshape(1))
-        self.log_widths()  # update the stored log widths
 
     def extend(self, centers, widths):
         """
@@ -311,7 +279,6 @@ class ContinuousFuzzySet(torch.nn.Module):
             self.centers = torch.nn.Parameter(torch.cat([self.centers, centers]))
             widths = convert_to_tensor(widths)
             self.widths = torch.nn.Parameter(torch.cat([self.widths, widths]))
-        self.log_widths()  # update the stored log widths
 
     def area_helper(self, fuzzy_sets) -> List[float]:
         """
@@ -583,7 +550,7 @@ class Gaussian(ContinuousFuzzySet):
                         observations.unsqueeze(dim=-1) - self.centers,
                         2,
                     )
-                    / (torch.pow(torch.exp(self._log_widths), 2) + 1e-32)
+                    / (torch.pow(self.widths, 2) + 1e-32)
                 )
             )
             * self.mask
@@ -605,30 +572,6 @@ class Gaussian(ContinuousFuzzySet):
         return Membership(
             degrees=self.calculate_membership(observations), mask=self.get_mask()
         )
-        # return (
-        #     torch.exp(
-        #         -1.0
-        #         * (
-        #             torch.pow(
-        #                 observations.unsqueeze(dim=-1) - self.centers,
-        #                 2,
-        #             )
-        #             / (
-        #                 2
-        #                 * (
-        #                     torch.pow(
-        #                         # torch.exp(self._log_widths),
-        #                         calc_widths,
-        #                         2,
-        #                     )
-        #                 )
-        #                 + 1e-32
-        #             )
-        #             # / (torch.pow(torch.exp(self._log_widths), 2) + 1e-32)
-        #         )
-        #     )
-        #     * self.mask
-        # )
 
 
 class Triangular(ContinuousFuzzySet):
@@ -657,7 +600,7 @@ class Triangular(ContinuousFuzzySet):
             degrees=(
                 torch.max(
                     1.0
-                    - (1.0 / torch.exp(self._log_widths))
+                    - (1.0 / self.widths)
                     * torch.abs(observations.unsqueeze(dim=-1) - self.centers),
                     torch.tensor(0.0),
                 )
