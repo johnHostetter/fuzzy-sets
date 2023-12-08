@@ -47,41 +47,14 @@ class ContinuousFuzzySet(torch.nn.Module):
 
     def __init__(self, in_features, centers=None, widths=None, labels=None):
         super().__init__()
-        self.centers, self.widths, self.labels = None, None, None
-        self.in_features, self.mask = None, None
-        self.constructor(
-            in_features=in_features, centers=centers, widths=widths, labels=labels
-        )
-
-    def constructor(self, in_features, centers=None, widths=None, labels=None):
         self.in_features = in_features
+        self.centers = torch.nn.parameter.Parameter(convert_to_tensor(centers)).float()
+        self.widths = torch.nn.parameter.Parameter(convert_to_tensor(widths)).float()
         self.labels = labels
 
-        # initialize centers
-        if centers is None:
-            centers = torch.randn(self.in_features)
-        else:
-            centers = convert_to_tensor(centers)
-        self.centers = torch.nn.parameter.Parameter(centers).float()
-
-        # initialize widths -- never adjust the widths directly,
-        # use the logarithm of them to avoid negatives
-        if widths is None:  # we apply the logarithm to the widths,
-            # so later, if we train them, and they become
-            # nonzero, with an exponential function they are still positive
-            # in other words, since gradient descent may make the widths negative,
-            # we nullify that effect
-            widths = torch.rand(self.in_features)
-            mask = torch.ones(widths.shape)
-        else:
-            # we assume the widths are given to us are within (0, 1)
-            widths = convert_to_tensor(widths)
-            # negative widths are a special flag to indicate that the fuzzy set
-            # at that location does not actually exist
-            mask = (widths > 0).int()  # keep only the valid fuzzy sets
-
-        self.widths = torch.nn.parameter.Parameter(widths).float()
-        self.mask = mask
+        # negative widths are a special flag to indicate that the fuzzy set
+        # at that location does not actually exist
+        self.mask = (widths > 0).int()  # keep only the valid fuzzy sets
 
     def get_mask(self) -> torch.Tensor:
         # mask has value of 1 if you should ignore corresponding degree in same i'th and j'th place
