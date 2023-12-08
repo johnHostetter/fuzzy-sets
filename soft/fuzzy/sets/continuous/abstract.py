@@ -54,7 +54,7 @@ class ContinuousFuzzySet(torch.nn.Module):
 
         # negative widths are a special flag to indicate that the fuzzy set
         # at that location does not actually exist
-        self.mask = (widths > 0).int()  # keep only the valid fuzzy sets
+        self.mask = (self.widths > 0).int()  # keep only the valid fuzzy sets
 
     def get_mask(self) -> torch.Tensor:
         # mask has value of 1 if you should ignore corresponding degree in same i'th and j'th place

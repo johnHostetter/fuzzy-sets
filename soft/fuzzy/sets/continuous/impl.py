@@ -113,7 +113,7 @@ class GroupedFuzzySets(torch.nn.Module):
                 if len(n) == 0:
                     empty_sets.append(idx)
                 sets.append(
-                    type(self)(
+                    Gaussian(
                         in_features=len(n),
                         centers=n,
                         widths=torch.randn_like(n).abs(),
