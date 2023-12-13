@@ -181,12 +181,17 @@ class Gaussian(ContinuousFuzzySet):
                 * self.mask
             )
         except RuntimeError:  # computer vision scenario
+            # return torch.nn.CosineSimilarity(dim=-1)(
+            #     observations.view(observations.shape[0], -1).unsqueeze(dim=1),
+            #     self.centers.view(self.centers.shape[0], -1),
+            # ).unsqueeze(
+            #     dim=-1
+            # )  # need a placeholder for the term slot
+
             return torch.nn.CosineSimilarity(dim=-1)(
-                observations.view(observations.shape[0], -1).unsqueeze(dim=1),
-                self.centers.view(self.centers.shape[0], -1),
-            ).unsqueeze(
-                dim=-1
-            )  # need a placeholder for the term slot
+                observations.view(*observations.shape[:2], -1).unsqueeze(dim=1),
+                self.centers.view(*self.centers.shape[:-2], -1),
+            )
 
             return (
                 torch.exp(
