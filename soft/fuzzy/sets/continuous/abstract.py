@@ -322,6 +322,8 @@ class ContinuousFuzzySet(torch.nn.Module):
             The membership degrees of the observations for the Gaussian fuzzy set.
         """
         observations = convert_to_tensor(observations)
+        if observations.ndim == 3:
+            observations = observations.unsqueeze(dim=0)
         return Membership(
             degrees=self.calculate_membership(observations), mask=self.get_mask()
         )

@@ -152,9 +152,7 @@ class TestGaussian(unittest.TestCase):
             gaussian_mf.centers.cpu(), torch.tensor(centers).float()
         ).all()
         # the outputs of the PyTorch and Numpy versions should be approx. equal
-        assert np.isclose(
-            mu_pytorch.squeeze(dim=1).cpu().detach().numpy(), mu_numpy, rtol=1e-6
-        ).all()
+        assert torch.isclose(mu_pytorch.cpu(), mu_numpy).all()
 
     def test_multi_input_with_centers_given(self) -> None:
         """
@@ -241,6 +239,59 @@ class TestGaussian(unittest.TestCase):
         sigmas = torch.tensor(
             [0.1, 0.25, 0.5, 0.75, 1.0]
         )  # negative widths are missing sets
+        gaussian_mf = Gaussian(
+            in_features=elements.shape[1], centers=centers, widths=sigmas
+        )
+        mu_pytorch = gaussian_mf(elements).degrees
+        mu_numpy = gaussian_numpy(
+            elements, centers.cpu().detach().numpy(), sigmas.cpu().detach().numpy()
+        )
+
+        # make sure the Gaussian parameters are still identical afterward
+        assert torch.isclose(gaussian_mf.centers.cpu(), centers).all()
+        assert torch.isclose(gaussian_mf.widths.cpu(), sigmas).all()
+        # the outputs of the PyTorch and Numpy versions should be approx. equal
+        assert np.isclose(
+            mu_pytorch.squeeze(dim=1).cpu().detach().numpy(), mu_numpy, rtol=1e-6
+        ).all()
+
+    def test_multi_centers(self) -> None:
+        """
+        Test that multidimensional centers work with the Gaussian membership function.
+
+        Returns:
+            None
+        """
+        set_rng(0)
+        elements = torch.Tensor(
+            [
+                [
+                    [0.6960, 0.8233, 0.8147],
+                    [0.1024, 0.3122, 0.5160],
+                    [0.8981, 0.6810, 0.2366],
+                ],
+                [
+                    [0.2447, 0.4218, 0.6146],
+                    [0.8887, 0.6273, 0.6697],
+                    [0.1439, 0.9383, 0.8101],
+                ],
+            ]
+        )
+        centers = torch.tensor(
+            [
+                [
+                    [0.1236, 0.4893, 0.8372],
+                    [0.8275, 0.2979, 0.7192],
+                    [0.2328, 0.1418, 0.1036],
+                ],
+                [
+                    [0.9651, 0.7622, 0.1544],
+                    [0.1274, 0.5798, 0.6425],
+                    [0.1518, 0.6554, 0.3799],
+                ],
+            ]
+        )
+        sigmas = torch.tensor([0.1, 0.25, 0.5])  # negative widths are missing sets
         gaussian_mf = Gaussian(
             in_features=elements.shape[1], centers=centers, widths=sigmas
         )

@@ -85,7 +85,7 @@ class GroupedFuzzySets(torch.nn.Module):
         # if mu.grad_fn is None and self.expandable:
         #     print("grad_fn of mu is None, but might be in target net tho")
 
-        if self.expandable:
+        if self.expandable and False:
             # find where the new centers should be added, if any
             new_centers = (
                 observations * (module_responses.max(dim=-1).values <= self.epsilon)
@@ -164,19 +164,59 @@ class Gaussian(ContinuousFuzzySet):
         self.widths = sigmas
 
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
-        return (
-            torch.exp(
-                -1.0
-                * (
-                    torch.pow(
-                        observations.unsqueeze(dim=-1) - self.centers,
-                        2,
+        if observations.ndim < self.centers.ndim:
+            observations = observations.unsqueeze(dim=-1)
+        try:
+            return (
+                torch.exp(
+                    -1.0
+                    * (
+                        torch.pow(
+                            observations - self.centers,
+                            2,
+                        )
+                        / (torch.pow(self.widths, 2) + 1e-32)
                     )
-                    / (torch.pow(self.widths, 2) + 1e-32)
                 )
+                * self.mask
             )
-            * self.mask
-        )
+        except RuntimeError:  # computer vision scenario
+            return torch.nn.CosineSimilarity(dim=-1)(
+                observations.view(observations.shape[0], -1).unsqueeze(dim=1),
+                self.centers.view(self.centers.shape[0], -1),
+            ).unsqueeze(
+                dim=-1
+            )  # need a placeholder for the term slot
+
+            return (
+                torch.exp(
+                    -1.0
+                    * (
+                        torch.pow(
+                            observations.unsqueeze(1) - self.centers,
+                            2,
+                        )
+                        / (torch.pow(self.widths[None, :, :, None, None], 2) + 1e-32)
+                    )
+                )
+                * self.mask[None, :, :, None, None]
+            )
+        # torch.nn.CosineSimilarity()(
+        #     observations.view(observations.shape[0], -1).unsqueeze(dim=1),
+        #     self.centers.view(self.centers.shape[0], -1),
+        # )
+
+
+#
+#
+# torch.nn.CosineSimilarity(dim=0)(
+#     observations.view(observations.shape[0], -1)[0],
+#     self.centers.view(self.centers.shape[0], -1)[0],
+# )
+# torch.nn.CosineSimilarity(dim=-1)(
+#     observations.view(observations.shape[0], -1).unsqueeze(dim=1),
+#     self.centers.view(self.centers.shape[0], -1),
+# )
 
 
 class Lorentzian(ContinuousFuzzySet):
