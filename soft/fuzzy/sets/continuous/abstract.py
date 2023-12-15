@@ -324,6 +324,9 @@ class ContinuousFuzzySet(torch.nn.Module):
         observations = convert_to_tensor(observations)
         if observations.ndim == 3:
             observations = observations.unsqueeze(dim=0)
+        degrees = self.calculate_membership(observations)
+        mask = torch.zeros(degrees.shape[1:])
+        return Membership(degrees, mask)
         return Membership(
             degrees=self.calculate_membership(observations), mask=self.get_mask()
         )

@@ -32,6 +32,17 @@ class GroupedFuzzySets(torch.nn.Module):
         self.expandable = expandable
         self.epsilon = 0.5  # epsilon-completeness
 
+        self.neurons = torch.nn.ModuleList()
+        for idx in range(64):
+            neuron = torch.nn.Sequential(
+                torch.nn.Linear(
+                    in_features=49,
+                    out_features=10,
+                ),
+                torch.nn.Sigmoid(),
+            )
+            self.neurons.add_module(f"{idx}", neuron)
+
     def __getattribute__(self, item):
         try:
             if item in ("centers", "widths", "sigmas"):
@@ -80,6 +91,17 @@ class GroupedFuzzySets(torch.nn.Module):
 
     def forward(self, observations) -> Membership:
         observations = convert_to_tensor(observations)
+
+        memberships = []
+        for idx, neuron in enumerate(self.neurons):
+            memberships.append(
+                neuron(observations[:, idx, :, :].flatten(start_dim=1)).unsqueeze(dim=1)
+            )
+        return Membership(
+            degrees=torch.cat(memberships, dim=1),
+            mask=torch.zeros((len(self.neurons), 10)),
+        )
+
         module_responses, module_masks = self.calculate_module_responses(observations)
 
         # if mu.grad_fn is None and self.expandable:
@@ -135,6 +157,32 @@ class GroupedFuzzySets(torch.nn.Module):
         return Membership(degrees=module_responses, mask=module_masks)
 
 
+class Neuron(ContinuousFuzzySet):
+    def __init__(self, in_features, observations):
+        super().__init__(in_features)
+        self.neurons = torch.nn.ModuleList()
+        for idx in range(observations.shape[1]):
+            neuron = torch.nn.Sequential(
+                torch.nn.Linear(
+                    in_features=observations.flatten(start_dim=2).shape[-1],
+                    out_features=10,
+                ),
+                torch.nn.Sigmoid(),
+            )
+            self.neurons.add_module(f"{idx}", neuron)
+
+    def calculate_membership(
+        self, observations: torch.Tensor
+    ) -> Union[NoReturn, torch.Tensor]:
+        memberships = []
+        for idx, neuron in enumerate(self.neurons):
+            memberships.append(neuron(observations[:, idx, :, :]))
+        return Membership(
+            degrees=torch.cat(memberships, dim=1),
+            mask=torch.zeros((len(self.neurons), self.neurons[0].in_features)),
+        )
+
+
 class Gaussian(ContinuousFuzzySet):
     """
     Implementation of the Gaussian membership function, written in PyTorch.
@@ -166,6 +214,23 @@ class Gaussian(ContinuousFuzzySet):
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
         if observations.ndim < self.centers.ndim:
             observations = observations.unsqueeze(dim=-1)
+
+        # observations = torch.nn.functional.avg_pool2d(
+        #     observations, kernel_size=observations.size()[2:]
+        # ).view(observations.size()[0], -1)
+
+        sim = torch.nn.CosineSimilarity(dim=-1)
+        return sim(
+            observations.flatten(start_dim=2).unsqueeze(2),
+            self.centers.flatten(start_dim=2),
+        )
+
+        SSD = (
+            torch.pow((observations.unsqueeze(dim=2) - self.centers), 2).sum(-1).sum(-1)
+        )
+
+        return SSD / torch.pow(self.centers, 2).sum(-1).sum(-1)  # normalized SSD
+
         try:
             return (
                 torch.exp(
@@ -187,25 +252,88 @@ class Gaussian(ContinuousFuzzySet):
             # ).unsqueeze(
             #     dim=-1
             # )  # need a placeholder for the term slot
+            # observations = torch.nn.functional.avg_pool2d(
+            #     observations, kernel_size=observations.size()[2:]
+            # ).view(observations.size()[0], -1)
 
-            return torch.nn.CosineSimilarity(dim=-1)(
-                observations.view(*observations.shape[:2], -1).unsqueeze(dim=1),
-                self.centers.view(*self.centers.shape[:-2], -1),
+            # return torch.nn.CosineSimilarity(dim=-1)(
+            #     observations.view(*observations.shape[:2], -1).unsqueeze(dim=1),
+            #     self.centers.view(*self.centers.shape[:-2], -1),
+            # )
+            # observations = observations.to("cuda:0")
+
+            SSD = (
+                torch.pow((observations.unsqueeze(dim=2) - self.centers), 2)
+                .sum(-1)
+                .sum(-1)
             )
+
+            return SSD / torch.pow(self.centers, 2).sum(-1).sum(-1)  # normalized SSD
+
+            return torch.pow(
+                observations.flatten(start_dim=1).unsqueeze(dim=-1) - self.centers,
+                2,
+            ) / (torch.pow(self.widths, 2) + 1e-32)
+
+            print()
 
             return (
                 torch.exp(
                     -1.0
                     * (
-                        torch.pow(
-                            observations.unsqueeze(1) - self.centers,
-                            2,
+                        (
+                            torch.pow(
+                                observations.unsqueeze(dim=-1).cuda()
+                                - self.centers[:, 0, :].cuda(),
+                                2,
+                            )
+                            / (torch.pow(self.widths[:, 0, :].cuda(), 2) + 1e-32)
                         )
-                        / (torch.pow(self.widths[None, :, :, None, None], 2) + 1e-32)
+                        + (
+                            torch.pow(
+                                observations.unsqueeze(dim=-1).cuda()
+                                - self.centers[:, 1, :].cuda(),
+                                2,
+                            )
+                            / (torch.pow(self.widths[:, 1, :].cuda(), 2) + 1e-32)
+                        )
                     )
                 )
-                * self.mask[None, :, :, None, None]
+                * (1 / 2 * torch.pi * self.widths.cuda().prod(dim=1))
+                # * self.mask.cuda()
+                # .unsqueeze(dim=0)
+                # .transpose(1, 2)
             )
+
+            # return (
+            #     torch.exp(
+            #         -1.0
+            #         * (
+            #             torch.pow(
+            #                 observations.unsqueeze(dim=-1).cuda() - self.centers.cuda(),
+            #                 2,
+            #             )
+            #             / (torch.pow(self.widths.cuda(), 2) + 1e-32)
+            #         )
+            #     )
+            #     * self.mask.cuda()
+            #     # .unsqueeze(dim=0)
+            #     # .transpose(1, 2)
+            # )
+
+            # return (
+            #     torch.exp(
+            #         -1.0
+            #         * (
+            #             torch.pow(
+            #                 observations.unsqueeze(1) - self.centers,
+            #                 2,
+            #             )
+            #             / (torch.pow(self.widths[None, :, :, None, None], 2) + 1e-32)
+            #         )
+            #     )
+            #     * self.mask[None, :, :, None, None]
+            # )
         # torch.nn.CosineSimilarity()(
         #     observations.view(observations.shape[0], -1).unsqueeze(dim=1),
         #     self.centers.view(self.centers.shape[0], -1),
