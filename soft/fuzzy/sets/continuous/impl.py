@@ -37,9 +37,15 @@ class GroupedFuzzySets(torch.nn.Module):
             neuron = torch.nn.Sequential(
                 torch.nn.Linear(
                     in_features=49,
+                    out_features=128,
+                ),
+                torch.nn.LeakyReLU(),
+                torch.nn.Linear(
+                    in_features=128,
                     out_features=10,
                 ),
-                torch.nn.Sigmoid(),
+                torch.nn.ReLU()
+                # torch.nn.Sigmoid(),
             )
             self.neurons.add_module(f"{idx}", neuron)
 
