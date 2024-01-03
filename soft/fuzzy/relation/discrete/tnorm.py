@@ -1,16 +1,15 @@
 """
-Implements the s-norm fuzzy relations.
+Implements the t-norm fuzzy relations.
 """
-
 from typing import List
 
 from soft.fuzzy.sets.discrete import DiscreteFuzzySet
-from soft.fuzzy.relation.extension import DiscreteFuzzyRelation
+from soft.fuzzy.relation.discrete.extension import DiscreteFuzzyRelation
 
 
-class StandardUnion(DiscreteFuzzyRelation):
+class StandardIntersection(DiscreteFuzzyRelation):
     """
-    A standard union of one or more ordinary fuzzy sets.
+    A standard intersection of one or more ordinary fuzzy sets.
     """
 
     def __init__(self, fuzzy_sets: List[DiscreteFuzzySet], name=None):
@@ -24,5 +23,5 @@ class StandardUnion(DiscreteFuzzyRelation):
             This feature is useful when visualizing the fuzzy set, and its interaction with
             other fuzzy fets in the same space.
         """
-        DiscreteFuzzyRelation.__init__(self, formulas=fuzzy_sets, name=name, mode=max)
+        DiscreteFuzzyRelation.__init__(self, formulas=fuzzy_sets, name=name, mode=min)
         self.fuzzy_sets = fuzzy_sets

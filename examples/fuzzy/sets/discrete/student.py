@@ -3,8 +3,8 @@ Demo of working with discrete fuzzy sets for a toy task regarding knowledge of m
 """
 from sympy import Symbol, Interval, oo  # oo is infinity
 
-from soft.fuzzy.relation.tnorm import StandardIntersection
-from soft.fuzzy.relation.extension import AlphaCut, SpecialFuzzySet
+from soft.fuzzy.relation.discrete.tnorm import StandardIntersection
+from soft.fuzzy.relation.discrete.extension import AlphaCut, SpecialFuzzySet
 from soft.fuzzy.sets.discrete import DiscreteFuzzySet, FuzzyVariable
 
 
