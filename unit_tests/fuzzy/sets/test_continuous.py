@@ -295,7 +295,7 @@ class TestGaussian(unittest.TestCase):
         gaussian_mf = Gaussian(
             in_features=elements.shape[1], centers=centers, widths=sigmas
         )
-        mu_pytorch = gaussian_mf(elements).degrees
+        mu_pytorch = gaussian_mf(elements.unsqueeze(dim=0)).degrees
         mu_numpy = gaussian_numpy(
             elements, centers.cpu().detach().numpy(), sigmas.cpu().detach().numpy()
         )
@@ -305,7 +305,7 @@ class TestGaussian(unittest.TestCase):
         assert torch.isclose(gaussian_mf.widths.cpu(), sigmas).all()
         # the outputs of the PyTorch and Numpy versions should be approx. equal
         assert np.isclose(
-            mu_pytorch.squeeze(dim=1).cpu().detach().numpy(), mu_numpy, rtol=1e-6
+            mu_pytorch.squeeze(dim=0).cpu().detach().numpy(), mu_numpy, rtol=1e-6
         ).all()
 
     def test_consistency(self) -> None:
@@ -344,8 +344,8 @@ class TestGaussian(unittest.TestCase):
 
         gaussian_mf = Gaussian(
             element.shape[1],
-            centers=centers[: element.shape[1]],
-            widths=sigmas[: element.shape[1]],
+            centers=centers,
+            widths=sigmas,
         )
         mu_pytorch = gaussian_mf(torch.tensor(element[0])).degrees
 

@@ -233,105 +233,102 @@ class Gaussian(ContinuousFuzzySet):
         self.widths = sigmas
 
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
-        if observations.ndim < self.centers.ndim:
-            observations = observations.unsqueeze(dim=-1)
+        # observations = torch.nn.functional.avg_pool2d(
+        #     observations, kernel_size=observations.size()[2:]
+        # ).view(observations.size()[0], -1)
 
-            # observations = torch.nn.functional.avg_pool2d(
-            #     observations, kernel_size=observations.size()[2:]
-            # ).view(observations.size()[0], -1)
-
-            # sim = torch.nn.CosineSimilarity(dim=-1)
-            # return sim(
-            #     observations.flatten(start_dim=2).unsqueeze(2),
-            #     self.centers.flatten(start_dim=2),
-            # )
-            #
-            # SSD = (
-            #     torch.pow((observations.unsqueeze(dim=2) - self.centers), 2).sum(-1).sum(-1)
-            # )
-            #
-            # return SSD / torch.pow(self.centers, 2).sum(-1).sum(-1)  # normalized SSD
-            #
-            # try:
-            #     return (
-            #         torch.exp(
-            #             -1.0
-            #             * (
-            #                 torch.pow(
-            #                     observations - self.centers,
-            #                     2,
-            #                 )
-            #                 / (torch.pow(self.widths, 2) + 1e-32)
-            #             )
-            #         )
-            #         * self.mask
-            #     )
-            # except RuntimeError:  # computer vision scenario
-            #     # return torch.nn.CosineSimilarity(dim=-1)(
-            #     #     observations.view(observations.shape[0], -1).unsqueeze(dim=1),
-            #     #     self.centers.view(self.centers.shape[0], -1),
-            #     # ).unsqueeze(
-            #     #     dim=-1
-            #     # )  # need a placeholder for the term slot
-            #     # observations = torch.nn.functional.avg_pool2d(
-            #     #     observations, kernel_size=observations.size()[2:]
-            #     # ).view(observations.size()[0], -1)
-            #
-            #     # return torch.nn.CosineSimilarity(dim=-1)(
-            #     #     observations.view(*observations.shape[:2], -1).unsqueeze(dim=1),
-            #     #     self.centers.view(*self.centers.shape[:-2], -1),
-            #     # )
-            #     # observations = observations.to("cuda:0")
-            #
-            #     SSD = (
-            #         torch.pow((observations.unsqueeze(dim=2) - self.centers), 2)
-            #         .sum(-1)
-            #         .sum(-1)
-            #     )
-            #
-            #     return SSD / torch.pow(self.centers, 2).sum(-1).sum(-1)  # normalized SSD
-            #
-            #     return torch.pow(
-            #         observations.flatten(start_dim=1).unsqueeze(dim=-1) - self.centers,
-            #         2,
-            #     ) / (torch.pow(self.widths, 2) + 1e-32)
-            #
-            #     print()
-            #
-            #     return (
-            #         torch.exp(
-            #             -1.0
-            #             * (
-            #                 (
-            #                     torch.pow(
-            #                         observations.unsqueeze(dim=-1).cuda()
-            #                         - self.centers[:, 0, :].cuda(),
-            #                         2,
-            #                     )
-            #                     / (torch.pow(self.widths[:, 0, :].cuda(), 2) + 1e-32)
-            #                 )
-            #                 + (
-            #                     torch.pow(
-            #                         observations.unsqueeze(dim=-1).cuda()
-            #                         - self.centers[:, 1, :].cuda(),
-            #                         2,
-            #                     )
-            #                     / (torch.pow(self.widths[:, 1, :].cuda(), 2) + 1e-32)
-            #                 )
-            #             )
-            #         )
-            #         * (1 / 2 * torch.pi * self.widths.cuda().prod(dim=1))
-            #         # * self.mask.cuda()
-            #         # .unsqueeze(dim=0)
-            #         # .transpose(1, 2)
-            #     )
+        # sim = torch.nn.CosineSimilarity(dim=-1)
+        # return sim(
+        #     observations.flatten(start_dim=2).unsqueeze(2),
+        #     self.centers.flatten(start_dim=2),
+        # )
+        #
+        # SSD = (
+        #     torch.pow((observations.unsqueeze(dim=2) - self.centers), 2).sum(-1).sum(-1)
+        # )
+        #
+        # return SSD / torch.pow(self.centers, 2).sum(-1).sum(-1)  # normalized SSD
+        #
+        # try:
+        #     return (
+        #         torch.exp(
+        #             -1.0
+        #             * (
+        #                 torch.pow(
+        #                     observations - self.centers,
+        #                     2,
+        #                 )
+        #                 / (torch.pow(self.widths, 2) + 1e-32)
+        #             )
+        #         )
+        #         * self.mask
+        #     )
+        # except RuntimeError:  # computer vision scenario
+        #     # return torch.nn.CosineSimilarity(dim=-1)(
+        #     #     observations.view(observations.shape[0], -1).unsqueeze(dim=1),
+        #     #     self.centers.view(self.centers.shape[0], -1),
+        #     # ).unsqueeze(
+        #     #     dim=-1
+        #     # )  # need a placeholder for the term slot
+        #     # observations = torch.nn.functional.avg_pool2d(
+        #     #     observations, kernel_size=observations.size()[2:]
+        #     # ).view(observations.size()[0], -1)
+        #
+        #     # return torch.nn.CosineSimilarity(dim=-1)(
+        #     #     observations.view(*observations.shape[:2], -1).unsqueeze(dim=1),
+        #     #     self.centers.view(*self.centers.shape[:-2], -1),
+        #     # )
+        #     # observations = observations.to("cuda:0")
+        #
+        #     SSD = (
+        #         torch.pow((observations.unsqueeze(dim=2) - self.centers), 2)
+        #         .sum(-1)
+        #         .sum(-1)
+        #     )
+        #
+        #     return SSD / torch.pow(self.centers, 2).sum(-1).sum(-1)  # normalized SSD
+        #
+        #     return torch.pow(
+        #         observations.flatten(start_dim=1).unsqueeze(dim=-1) - self.centers,
+        #         2,
+        #     ) / (torch.pow(self.widths, 2) + 1e-32)
+        #
+        #     print()
+        #
+        #     return (
+        #         torch.exp(
+        #             -1.0
+        #             * (
+        #                 (
+        #                     torch.pow(
+        #                         observations.unsqueeze(dim=-1).cuda()
+        #                         - self.centers[:, 0, :].cuda(),
+        #                         2,
+        #                     )
+        #                     / (torch.pow(self.widths[:, 0, :].cuda(), 2) + 1e-32)
+        #                 )
+        #                 + (
+        #                     torch.pow(
+        #                         observations.unsqueeze(dim=-1).cuda()
+        #                         - self.centers[:, 1, :].cuda(),
+        #                         2,
+        #                     )
+        #                     / (torch.pow(self.widths[:, 1, :].cuda(), 2) + 1e-32)
+        #                 )
+        #             )
+        #         )
+        #         * (1 / 2 * torch.pi * self.widths.cuda().prod(dim=1))
+        #         # * self.mask.cuda()
+        #         # .unsqueeze(dim=0)
+        #         # .transpose(1, 2)
+        #     )
 
         return (
             torch.exp(
                 -1.0
                 * (
                     torch.pow(
-                        observations.unsqueeze(dim=-1) - self.centers,
+                        observations - self.centers,
                         2,
                     )
                     / (torch.pow(self.widths, 2) + 1e-32)
@@ -487,9 +484,7 @@ class Triangular(ContinuousFuzzySet):
         """
         return (
             torch.max(
-                1.0
-                - (1.0 / self.widths)
-                * torch.abs(observations.unsqueeze(dim=-1) - self.centers),
+                1.0 - (1.0 / self.widths) * torch.abs(observations - self.centers),
                 torch.tensor(0.0),
             )
             * self.mask
