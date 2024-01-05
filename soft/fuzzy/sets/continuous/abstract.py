@@ -45,20 +45,34 @@ class ContinuousFuzzySet(torch.nn.Module):
     inheriting or extending from ContinuousFuzzySet.
     """
 
-    def __init__(self, in_features, centers=None, widths=None, labels=None):
+    def __init__(
+        self,
+        in_features,
+        centers=None,
+        widths=None,
+        labels: List[str] = None,
+        device: str = "cpu",
+    ):
         super().__init__()
         self.in_features = in_features
-        self.centers = torch.nn.parameter.Parameter(convert_to_tensor(centers)).float()
-        self.widths = torch.nn.parameter.Parameter(convert_to_tensor(widths)).float()
+        self.device = device
+        self.centers = (
+            torch.nn.Parameter(convert_to_tensor(centers)).float().to(self.device)
+        )
+        self.widths = (
+            torch.nn.Parameter(convert_to_tensor(widths)).float().to(self.device)
+        )
         self.labels = labels
 
         # negative widths are a special flag to indicate that the fuzzy set
         # at that location does not actually exist
-        self.mask = (self.widths > 0).int()  # keep only the valid fuzzy sets
+        self.mask = (
+            (self.widths > 0).int().to(self.device)
+        )  # keep only the valid fuzzy sets
 
     def get_mask(self) -> torch.Tensor:
         # mask has value of 1 if you should ignore corresponding degree in same i'th and j'th place
-        return (self.widths == -1.0).float()
+        return (self.widths == -1.0).float().to(self.device)
 
     def reshape_parameters(self):
         """
@@ -324,9 +338,9 @@ class ContinuousFuzzySet(torch.nn.Module):
         observations = convert_to_tensor(observations)
         if observations.ndim == 3:
             observations = observations.unsqueeze(dim=0)
-        degrees = self.calculate_membership(observations)
-        mask = torch.zeros(degrees.shape[1:])
-        return Membership(degrees, mask)
+        # degrees = self.calculate_membership(observations)
+        # mask = torch.zeros(degrees.shape[1:])
+        # return Membership(degrees, mask)
         return Membership(
             degrees=self.calculate_membership(observations), mask=self.get_mask()
         )
