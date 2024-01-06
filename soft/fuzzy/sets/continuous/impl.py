@@ -25,15 +25,12 @@ class GroupedFuzzySets(torch.nn.Module):
     any kind of torch.nn.Module object.
     """
 
-    def __init__(
-        self, modules=None, expandable=False, device: str = "cpu", *args, **kwargs
-    ):
+    def __init__(self, modules=None, expandable=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if modules is None:
             modules = []
         self.modules_list = torch.nn.ModuleList(modules)
         self.expandable = expandable
-        self.device = device
         self.epsilon = 0.5  # epsilon-completeness
 
         # self.neurons = torch.nn.ModuleList()
@@ -81,7 +78,6 @@ class GroupedFuzzySets(torch.nn.Module):
         Returns:
             The FLC.
         """
-        self.device = "cuda:0"
         for module in self.modules_list:
             module.cuda(self.device)
         return super().cuda(device)
@@ -93,7 +89,6 @@ class GroupedFuzzySets(torch.nn.Module):
         Returns:
             The FLC.
         """
-        self.device = "cpu"
         for module in self.modules_list:
             module.cpu()
         return super().cpu()
@@ -234,11 +229,8 @@ class Gaussian(ContinuousFuzzySet):
         centers=None,
         widths=None,
         labels: List[str] = None,
-        device: str = "cpu",
     ):
-        super().__init__(
-            in_features, centers=centers, widths=widths, labels=labels, device=device
-        )
+        super().__init__(in_features, centers=centers, widths=widths, labels=labels)
 
     @property
     def sigmas(self) -> torch.Tensor:
@@ -409,11 +401,8 @@ class Lorentzian(ContinuousFuzzySet):
         centers=None,
         widths=None,
         labels: List[str] = None,
-        device: str = "cpu",
     ):
-        super().__init__(
-            in_features, centers=centers, widths=widths, labels=labels, device=device
-        )
+        super().__init__(in_features, centers=centers, widths=widths, labels=labels)
 
     @property
     def sigmas(self) -> torch.Tensor:
@@ -492,11 +481,8 @@ class Triangular(ContinuousFuzzySet):
         centers=None,
         widths=None,
         labels: List[str] = None,
-        device: str = "cpu",
     ):
-        super().__init__(
-            in_features, centers=centers, widths=widths, labels=labels, device=device
-        )
+        super().__init__(in_features, centers=centers, widths=widths, labels=labels)
 
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
         """
