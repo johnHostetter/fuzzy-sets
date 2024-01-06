@@ -54,17 +54,92 @@ class ContinuousFuzzySet(torch.nn.Module):
         super().__init__()
         self.centers = torch.nn.Parameter(convert_to_tensor(centers).float())
         self.widths = torch.nn.Parameter(convert_to_tensor(widths).float())
+        self._mask = self.widths > 0.0
         self.labels = labels
 
+    @property
+    def mask(self):
+        """
+        Get the mask of the fuzzy set, where the mask is a tensor of the same shape as the centers
+        and widths. The mask has a value of 1 if the fuzzy set exists, and 0 if the fuzzy set does
+        not exist.
+
+        Returns:
+            torch.Tensor
+        """
+        return self._mask
+
+    @mask.setter
+    def mask(self, mask):
+        """
+        Set the mask of the fuzzy set, where the mask is a tensor of the same shape as the centers
+        and widths. The mask has a value of 1 if the fuzzy set exists, and 0 if the fuzzy set does
+        not exist.
+
+        Returns:
+            torch.Tensor
+        """
         # negative widths are a special flag to indicate that the fuzzy set
         # at that location does not actually exist
-        self.mask = torch.nn.Parameter(
-            (self.widths > 0).int(), requires_grad=False
+        self._mask = torch.nn.Parameter(
+            mask.int(), requires_grad=False
         )  # keep only the valid fuzzy sets
 
-    def get_mask(self) -> torch.Tensor:
-        # mask has value of 1 if you should ignore corresponding degree in same i'th and j'th place
-        return (self.widths == -1.0).float()
+    @mask.deleter
+    def mask(self):
+        """
+        Delete the mask of the fuzzy set, where the mask is a tensor of the same shape as the centers
+        and widths. The mask has a value of 1 if the fuzzy set exists, and 0 if the fuzzy set does
+        not exist.
+
+        Returns:
+            torch.Tensor
+        """
+        del self._mask
+
+    @staticmethod
+    @abstractmethod
+    def create(
+        number_of_variables: int, number_of_terms: int
+    ) -> Union[NoReturn, "ContinuousFuzzySet"]:
+        """
+        Create a fuzzy set with the given number of variables and terms, where each variable
+        has the same number of terms. For example, if we have two variables, then we might have
+        three terms for each variable, such as "low", "medium", and "high". This would result in
+        a total of nine fuzzy sets. The centers and widths are initialized randomly.
+
+        Args:
+            number_of_variables: The number of variables.
+            number_of_terms: The number of terms.
+
+        Returns:
+            A ContinuousFuzzySet object, or a NotImplementedError if the method is not implemented.
+        """
+        raise NotImplementedError(
+            "The ContinuousFuzzySet has no defined membership function. Please create a class and "
+            "inherit from ContinuousFuzzySet, or use a predefined class, such as Gaussian."
+        )
+
+    # def create(self, number_of_variables: int, number_of_terms: int):
+    #     """
+    #     Create a fuzzy set with the given number of variables and terms, where each variable
+    #     has the same number of terms. For example, if we have two variables, then we might have
+    #     three terms for each variable, such as "low", "medium", and "high". This would result in
+    #     a total of nine fuzzy sets. The centers and widths are initialized randomly.
+    #
+    #     Args:
+    #         number_of_variables: The number of variables.
+    #         number_of_terms: The number of terms.
+    #
+    #     Returns:
+    #         None
+    #     """
+    #     self.centers = torch.nn.Parameter(
+    #         torch.randn(number_of_variables, number_of_terms)
+    #     ).float()
+    #     self.widths = torch.nn.Parameter(
+    #         torch.zeros(number_of_variables, number_of_terms)
+    #     ).float()
 
     def reshape_parameters(self):
         """
@@ -333,4 +408,4 @@ class ContinuousFuzzySet(torch.nn.Module):
             degrees: torch.Tensor = self.cpu().calculate_membership(observations)
         else:  # GPU
             degrees: torch.Tensor = self.cuda().calculate_membership(observations)
-        return Membership(degrees=degrees, mask=self.get_mask().to(observations.device))
+        return Membership(degrees=degrees, mask=self.mask)

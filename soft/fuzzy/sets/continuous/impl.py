@@ -422,7 +422,7 @@ class Lorentzian(ContinuousFuzzySet):
         self.widths = sigmas
 
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
-        return (1 - self.get_mask()) * (
+        return self.mask * (
             1
             / (
                 torch.pow(
