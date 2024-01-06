@@ -111,7 +111,7 @@ class TestGaussian(unittest.TestCase):
         """
         set_rng(0)
         element = torch.zeros(1)
-        gaussian_mf = Gaussian(in_features=1, centers=[1.5409961], widths=[0.30742282])
+        gaussian_mf = Gaussian(centers=[1.5409961], widths=[0.30742282])
         sigma = gaussian_mf.sigmas.cpu().detach().numpy()
         center = gaussian_mf.centers.cpu().detach().numpy()
         mu_pytorch = gaussian_mf(torch.tensor(element)).degrees
@@ -134,9 +134,7 @@ class TestGaussian(unittest.TestCase):
         elements = torch.tensor(
             [[0.41737163], [0.78705574], [0.40919196], [0.72005216]]
         )
-        gaussian_mf = Gaussian(
-            in_features=elements.shape[1], centers=[1.5410], widths=[0.3074]
-        )
+        gaussian_mf = Gaussian(centers=[1.5410], widths=[0.3074])
         centers, sigmas = (
             gaussian_mf.centers.cpu().detach().numpy(),
             gaussian_mf.sigmas.cpu().detach().numpy(),
@@ -168,9 +166,7 @@ class TestGaussian(unittest.TestCase):
         )
         centers = np.array([0.0, 0.25, 0.5, 0.75, 1.0])
         sigmas = np.array([0.4962566, 0.7682218, 0.08847743, 0.13203049, 0.30742282])
-        gaussian_mf = Gaussian(
-            in_features=centers.shape, centers=centers, widths=sigmas
-        )
+        gaussian_mf = Gaussian(centers=centers, widths=sigmas)
         mu_pytorch = gaussian_mf(elements).degrees
         mu_numpy = gaussian_numpy(elements, centers, sigmas)
 
@@ -206,9 +202,7 @@ class TestGaussian(unittest.TestCase):
         sigmas = torch.tensor(
             [0.1, 0.25, 0.5, 0.75, 1.0]
         )  # negative widths are missing sets
-        gaussian_mf = Gaussian(
-            in_features=elements.shape[1], centers=[1.5410], widths=sigmas
-        )
+        gaussian_mf = Gaussian(centers=[1.5410], widths=sigmas)
         mu_pytorch = gaussian_mf(elements).degrees
         mu_numpy = gaussian_numpy(
             elements,
@@ -239,9 +233,7 @@ class TestGaussian(unittest.TestCase):
         sigmas = torch.tensor(
             [0.1, 0.25, 0.5, 0.75, 1.0]
         )  # negative widths are missing sets
-        gaussian_mf = Gaussian(
-            in_features=elements.shape[1], centers=centers, widths=sigmas
-        )
+        gaussian_mf = Gaussian(centers=centers, widths=sigmas)
         mu_pytorch = gaussian_mf(elements).degrees
         mu_numpy = gaussian_numpy(
             elements, centers.cpu().detach().numpy(), sigmas.cpu().detach().numpy()
@@ -292,9 +284,7 @@ class TestGaussian(unittest.TestCase):
             ]
         )
         sigmas = torch.tensor([0.1, 0.25, 0.5])  # negative widths are missing sets
-        gaussian_mf = Gaussian(
-            in_features=elements.shape[1], centers=centers, widths=sigmas
-        )
+        gaussian_mf = Gaussian(centers=centers, widths=sigmas)
         mu_pytorch = gaussian_mf(elements.unsqueeze(dim=0)).degrees
         mu_numpy = gaussian_numpy(
             elements, centers.cpu().detach().numpy(), sigmas.cpu().detach().numpy()
@@ -343,7 +333,6 @@ class TestGaussian(unittest.TestCase):
         )
 
         gaussian_mf = Gaussian(
-            element.shape[1],
             centers=centers,
             widths=sigmas,
         )
@@ -374,9 +363,7 @@ class TestTriangular(unittest.TestCase):
         """
         set_rng(0)
         element = 0.0
-        triangular_mf = Triangular(
-            in_features=1, centers=[1.5409961], widths=[0.30742282]
-        )
+        triangular_mf = Triangular(centers=[1.5409961], widths=[0.30742282])
         center = triangular_mf.centers.cpu().detach().numpy()
         width = triangular_mf.widths.cpu().detach().numpy()
         mu_pytorch = triangular_mf(torch.tensor(element)).degrees
@@ -399,9 +386,7 @@ class TestTriangular(unittest.TestCase):
         elements = torch.tensor(
             [[0.41737163], [0.78705574], [0.40919196], [0.72005216]]
         )
-        triangular_mf = Triangular(
-            in_features=elements.shape[1], centers=[1.5410], widths=[0.3074]
-        )
+        triangular_mf = Triangular(centers=[1.5410], widths=[0.3074])
         centers, widths = (
             triangular_mf.centers.cpu().detach().numpy(),
             triangular_mf.widths.cpu().detach().numpy(),
@@ -434,9 +419,7 @@ class TestTriangular(unittest.TestCase):
             [[0.41737163], [0.78705574], [0.40919196], [0.72005216]]
         )
         centers = np.array([0.0, 0.25, 0.5, 0.75, 1.0])
-        triangular_mf = Triangular(
-            in_features=elements.shape[1], centers=centers, widths=[0.4962566]
-        )
+        triangular_mf = Triangular(centers=centers, widths=[0.4962566])
         widths = triangular_mf.widths.cpu().detach().numpy()
         mu_pytorch = triangular_mf(elements).degrees
         mu_numpy = triangular_numpy(elements.cpu().detach().numpy(), centers, widths)
@@ -468,9 +451,7 @@ class TestTriangular(unittest.TestCase):
         widths = np.array(
             [0.1, 0.25, 0.5, 0.75, 1.0]
         )  # negative widths are missing sets
-        triangular_mf = Triangular(
-            in_features=elements.shape[1], centers=[1.5409961], widths=widths
-        )
+        triangular_mf = Triangular(centers=[1.5409961], widths=widths)
         centers = triangular_mf.centers.cpu().detach().numpy()
         mu_pytorch = triangular_mf(elements).degrees
         mu_numpy = triangular_numpy(elements.cpu().detach().numpy(), centers, widths)
@@ -503,9 +484,7 @@ class TestTriangular(unittest.TestCase):
         widths = np.array(
             [0.1, 0.25, 0.5, 0.75, 1.0]
         )  # negative widths are missing sets
-        triangular_mf = Triangular(
-            in_features=elements.shape[1], centers=centers, widths=widths
-        )
+        triangular_mf = Triangular(centers=centers, widths=widths)
         mu_pytorch = triangular_mf(elements).degrees
         mu_numpy = triangular_numpy(elements.cpu().detach().numpy(), centers, widths)
 

@@ -47,13 +47,11 @@ class ContinuousFuzzySet(torch.nn.Module):
 
     def __init__(
         self,
-        in_features,
         centers=None,
         widths=None,
         labels: List[str] = None,
     ):
         super().__init__()
-        self.in_features = in_features
         self.centers = torch.nn.Parameter(convert_to_tensor(centers).float())
         self.widths = torch.nn.Parameter(convert_to_tensor(widths).float())
         self.labels = labels
@@ -94,7 +92,6 @@ class ContinuousFuzzySet(torch.nn.Module):
             None
         """
         with torch.no_grad():
-            self.in_features += len(centers)
             self.reshape_parameters()
             centers = convert_to_tensor(centers)
             self.centers = torch.nn.Parameter(
@@ -119,9 +116,7 @@ class ContinuousFuzzySet(torch.nn.Module):
         results = []
         for params in zip(fuzzy_sets.centers, fuzzy_sets.widths):
             centers, widths = params[0], params[1]
-            fuzzy_set = self.__class__(
-                in_features=centers.ndim, centers=centers, widths=widths
-            )
+            fuzzy_set = self.__class__(centers=centers, widths=widths)
 
             if centers.ndim > 0:
                 results.append(self.area_helper(fuzzy_set))
@@ -204,10 +199,8 @@ class ContinuousFuzzySet(torch.nn.Module):
                     trimmed_centers.append(center)
                     trimmed_widths.append(width)
 
-            in_features = len(trimmed_centers)
             variables.append(
                 type(self)(
-                    in_features=in_features,
                     centers=trimmed_centers,
                     widths=trimmed_widths,
                 )
@@ -293,7 +286,6 @@ class ContinuousFuzzySet(torch.nn.Module):
         # prepare a condensed and stacked representation of the granules
         mf_type = type(granules[0])
         return mf_type(
-            in_features=len(granules),
             centers=centers.cpu().float().detach().tolist(),
             widths=widths.cpu().float().detach().tolist(),
         )

@@ -171,7 +171,6 @@ class GroupedFuzzySets(torch.nn.Module):
                     empty_sets.append(idx)
                 sets.append(
                     Gaussian(
-                        in_features=len(n),
                         centers=n,
                         widths=torch.randn_like(n).abs(),
                     )
@@ -225,12 +224,11 @@ class Gaussian(ContinuousFuzzySet):
 
     def __init__(
         self,
-        in_features,
         centers=None,
         widths=None,
         labels: List[str] = None,
     ):
-        super().__init__(in_features, centers=centers, widths=widths, labels=labels)
+        super().__init__(centers=centers, widths=widths, labels=labels)
 
     @property
     def sigmas(self) -> torch.Tensor:
@@ -397,12 +395,11 @@ class Lorentzian(ContinuousFuzzySet):
 
     def __init__(
         self,
-        in_features,
         centers=None,
         widths=None,
         labels: List[str] = None,
     ):
-        super().__init__(in_features, centers=centers, widths=widths, labels=labels)
+        super().__init__(centers=centers, widths=widths, labels=labels)
 
     @property
     def sigmas(self) -> torch.Tensor:
@@ -477,12 +474,11 @@ class Triangular(ContinuousFuzzySet):
 
     def __init__(
         self,
-        in_features,
         centers=None,
         widths=None,
         labels: List[str] = None,
     ):
-        super().__init__(in_features, centers=centers, widths=widths, labels=labels)
+        super().__init__(centers=centers, widths=widths, labels=labels)
 
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
         """
