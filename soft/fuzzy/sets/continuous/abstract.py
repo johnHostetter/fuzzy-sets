@@ -5,11 +5,12 @@ which contains a helpful interface understanding membership degrees.
 """
 from abc import abstractmethod
 from collections import namedtuple
-from typing import List, NoReturn, Union
+from typing import List, NoReturn, Union, T, Optional
 
 import torch
 import torchquad
 import numpy as np
+from torch import device
 
 from utilities.functions import convert_to_tensor
 
@@ -56,23 +57,46 @@ class ContinuousFuzzySet(torch.nn.Module):
         super().__init__()
         self.in_features = in_features
         self.device = device
-        self.centers = (
-            torch.nn.Parameter(convert_to_tensor(centers)).float().to(self.device)
-        )
-        self.widths = (
-            torch.nn.Parameter(convert_to_tensor(widths)).float().to(self.device)
-        )
+        self.centers = torch.nn.Parameter(convert_to_tensor(centers)).float()
+        self.widths = torch.nn.Parameter(convert_to_tensor(widths)).float()
         self.labels = labels
 
         # negative widths are a special flag to indicate that the fuzzy set
         # at that location does not actually exist
-        self.mask = (
-            (self.widths > 0).int().to(self.device)
+        self.mask = torch.nn.Parameter(
+            (self.widths > 0).int(), requires_grad=False
         )  # keep only the valid fuzzy sets
+
+    # def cuda(self: T, device: Optional[Union[int, "device"]] = None) -> T:
+    #     """
+    #     Moves all model parameters and buffers to the GPU.
+    #
+    #     Args:
+    #         device: The destination GPU device. Defaults to the current CUDA device.
+    #
+    #     Returns:
+    #         The FLC.
+    #     """
+    #     self.device = "cuda:0"
+    #     for parameters in self.parameters():
+    #         module.cuda(self.device)
+    #     return super().cuda(device)
+    #
+    # def cpu(self: T) -> T:
+    #     """
+    #     Moves all model parameters and buffers to the CPU.
+    #
+    #     Returns:
+    #         The FLC.
+    #     """
+    #     self.device = "cpu"
+    #     for module in self.modules_list:
+    #         module.cpu()
+    #     return super().cpu()
 
     def get_mask(self) -> torch.Tensor:
         # mask has value of 1 if you should ignore corresponding degree in same i'th and j'th place
-        return (self.widths == -1.0).float().to(self.device)
+        return (self.widths == -1.0).float()
 
     def reshape_parameters(self):
         """
@@ -335,12 +359,14 @@ class ContinuousFuzzySet(torch.nn.Module):
         Returns:
             The membership degrees of the observations for the Gaussian fuzzy set.
         """
-        observations = convert_to_tensor(observations)
+        observations: torch.Tensor = convert_to_tensor(observations)
         if observations.ndim <= self.centers.ndim:
             observations = observations.unsqueeze(dim=-1)
         # degrees = self.calculate_membership(observations)
         # mask = torch.zeros(degrees.shape[1:])
         # return Membership(degrees, mask)
-        return Membership(
-            degrees=self.calculate_membership(observations), mask=self.get_mask()
-        )
+        if observations.get_device() == -1:  # CPU
+            degrees: torch.Tensor = self.cpu().calculate_membership(observations)
+        else:  # GPU
+            degrees: torch.Tensor = self.cuda().calculate_membership(observations)
+        return Membership(degrees=degrees, mask=self.get_mask().to(observations.device))

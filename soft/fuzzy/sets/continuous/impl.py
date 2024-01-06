@@ -1,9 +1,10 @@
 """
 Implements various membership functions by inheriting from ContinuousFuzzySet.
 """
-from typing import List, NoReturn, Union, Tuple, Any
+from typing import List, NoReturn, Union, Tuple, Any, T, Optional
 
 import torch
+from torch import device
 
 from utilities.functions import convert_to_tensor
 from soft.fuzzy.sets.continuous.abstract import ContinuousFuzzySet, Membership
@@ -62,13 +63,40 @@ class GroupedFuzzySets(torch.nn.Module):
                     ] = []  # the secondary response denoting module filter
                     for module in modules_list:
                         module_attributes.append(getattr(module, item))
-                    return torch.cat(module_attributes, dim=-1).to(self.device)
+                    return torch.cat(module_attributes, dim=-1)
                 raise ValueError(
                     "The torch.nn.ModuleList of GroupedFuzzySets is empty."
                 )
             return object.__getattribute__(self, item)
         except AttributeError:
             return self.__getattr__(item)
+
+    def cuda(self: T, device: Optional[Union[int, "device"]] = None) -> T:
+        """
+        Moves all model parameters and buffers to the GPU.
+
+        Args:
+            device: The destination GPU device. Defaults to the current CUDA device.
+
+        Returns:
+            The FLC.
+        """
+        self.device = "cuda:0"
+        for module in self.modules_list:
+            module.cuda(self.device)
+        return super().cuda(device)
+
+    def cpu(self: T) -> T:
+        """
+        Moves all model parameters and buffers to the CPU.
+
+        Returns:
+            The FLC.
+        """
+        self.device = "cpu"
+        for module in self.modules_list:
+            module.cpu()
+        return super().cpu()
 
     def get_mask(self) -> Union[torch.Tensor, NoReturn]:
         if len(self.modules_list) > 0:
@@ -77,7 +105,7 @@ class GroupedFuzzySets(torch.nn.Module):
             ] = []  # the secondary response denoting module filter
             for module in self.modules_list:
                 module_masks.append(module.get_mask().float())
-            return torch.cat(module_masks, dim=-1).to(self.device)
+            return torch.cat(module_masks, dim=-1)
         raise ValueError("The torch.nn.ModuleList of GroupedFuzzySets is empty.")
 
     def calculate_module_responses(
@@ -96,8 +124,8 @@ class GroupedFuzzySets(torch.nn.Module):
                 module_memberships.append(membership.degrees)
                 module_masks.append(membership.mask.float())
             return Membership(
-                degrees=torch.cat(module_memberships, dim=-1).to(self.device),
-                mask=torch.cat(module_masks, dim=-1).to(self.device),
+                degrees=torch.cat(module_memberships, dim=-1),
+                mask=torch.cat(module_masks, dim=-1),
             )
         raise ValueError("The torch.nn.ModuleList of GroupedFuzzySets is empty.")
 
