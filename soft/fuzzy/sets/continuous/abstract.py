@@ -6,7 +6,8 @@ which contains a helpful interface understanding membership degrees.
 import inspect
 from abc import abstractmethod, ABC
 from collections import namedtuple
-from typing import List, NoReturn, Union
+from pathlib import Path
+from typing import List, NoReturn, Union, OrderedDict, MutableMapping, Any
 
 import torch
 import torchquad
@@ -126,6 +127,83 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
             centers = torch.randn(number_of_variables, number_of_terms)
             widths = torch.rand(number_of_variables, number_of_terms)
             return cls(centers=centers, widths=widths)
+
+    def __eq__(self, other: Any):
+        """
+        Check if the fuzzy set is equal to another fuzzy set.
+
+        Args:
+            other: The other fuzzy set to compare to.
+
+        Returns:
+            True if the fuzzy sets are equal, False otherwise.
+        """
+        if not isinstance(other, type(self)):
+            return False
+        return torch.equal(self.centers, other.centers) and torch.equal(
+            self.widths, other.widths
+        )
+
+    def __hash__(self):
+        """
+        Hash the fuzzy set.
+
+        Returns:
+            The hash of the fuzzy set.
+        """
+        return hash((type(self), self.centers, self.widths, self.labels))
+
+    def save(self, path: Path):
+        """
+        Save the fuzzy set to a file.
+
+        Returns:
+            None
+        """
+        state_dict: MutableMapping = self.state_dict()
+        state_dict["labels"] = self.labels
+        state_dict["class_name"] = self.__class__.__name__
+        if ".pt" not in path.name and ".pth" not in path.name:
+            raise ValueError(
+                f"The path to save the fuzzy set must have a file extension of '.pt', "
+                f"but got {path.name}"
+            )
+        elif ".pth" in path.name:
+            raise ValueError(
+                f"The path to save the fuzzy set must have a file extension of '.pt', "
+                f"but got {path.name}. Please change the file extension to '.pt' as it is not "
+                f"recommended to use '.pth' for PyTorch models, as it conflicts with Python path"
+                f"configuration files."
+            )
+        torch.save(state_dict, path)
+        return state_dict
+
+    @staticmethod
+    def load(path: Path) -> "ContinuousFuzzySet":
+        """
+        Load the fuzzy set from a file.
+
+        Returns:
+            None
+        """
+        state_dict: MutableMapping = torch.load(path)
+        centers = state_dict.pop("centers")
+        widths = state_dict.pop("widths")
+        labels = state_dict.pop("labels")
+        class_name = state_dict.pop("class_name")
+        fuzzy_set_class = None
+        for subclass in ContinuousFuzzySet.__subclasses__():
+            if subclass.__name__ == class_name:
+                fuzzy_set_class = subclass
+                break
+        if fuzzy_set_class is None:
+            raise ValueError(
+                f"The fuzzy set class {class_name} was not found in the subclasses of "
+                f"ContinuousFuzzySet. Please ensure that the fuzzy set class is a subclass of "
+                f"ContinuousFuzzySet."
+            )
+        else:
+            return fuzzy_set_class(centers=centers, widths=widths, labels=labels)
 
     def reshape_parameters(self):
         """

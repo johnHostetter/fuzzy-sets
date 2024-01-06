@@ -5,6 +5,10 @@ function).
 """
 import os
 import unittest
+from collections import OrderedDict
+from pathlib import Path
+from typing import MutableMapping
+
 import numpy as np
 
 import torch
@@ -113,6 +117,61 @@ class TestContinuousFuzzySet(unittest.TestCase):
         """
         with self.assertRaises(NotImplementedError):
             ContinuousFuzzySet.create(number_of_variables=4, number_of_terms=2)
+
+    def test_save_and_load(self) -> None:
+        for subclass in ContinuousFuzzySet.__subclasses__():
+            membership_func = subclass.create(number_of_variables=4, number_of_terms=4)
+            state_dict: MutableMapping = membership_func.state_dict()
+
+            # test that the path must be valid
+            with self.assertRaises(ValueError):
+                membership_func.save(Path(""))
+            with self.assertRaises(ValueError):
+                membership_func.save(Path("test"))
+            with self.assertRaises(ValueError):
+                membership_func.save(
+                    Path("test.pth")
+                )  # this file extension is not supported; see error message to learn why
+
+            # test that saving the state dict works
+            saved_state_dict: OrderedDict = membership_func.save(
+                Path("membership_func.pt")
+            )
+
+            # check that the saved state dict is the same as the original state dict
+            for key in state_dict.keys():
+                assert key in saved_state_dict and torch.allclose(
+                    state_dict[key], saved_state_dict[key]
+                )
+            # except the saved state dict includes additional information not captured by
+            # the original state dict, such as the class name and the labels
+            assert "labels" in saved_state_dict.keys()
+            assert "class_name" in saved_state_dict.keys() and saved_state_dict[
+                "class_name"
+            ] in (subclass.__name__ for subclass in ContinuousFuzzySet.__subclasses__())
+
+            loaded_membership_func = ContinuousFuzzySet.load(Path("membership_func.pt"))
+            # check that the parameters and members are the same
+            assert membership_func == loaded_membership_func
+            assert torch.allclose(
+                membership_func.centers, loaded_membership_func.centers
+            )
+            assert torch.allclose(membership_func.widths, loaded_membership_func.widths)
+            if (
+                type(subclass) == Gaussian
+            ):  # Gaussian has an additional parameter (alias for widths)
+                assert torch.allclose(
+                    membership_func.sigmas, loaded_membership_func.sigmas
+                )
+            assert membership_func.labels == loaded_membership_func.labels
+            # check some functionality that it is still working
+            assert torch.allclose(membership_func.area(), loaded_membership_func.area())
+            assert torch.allclose(
+                membership_func(torch.tensor([[0.1, 0.2, 0.3, 0.4]])).degrees,
+                loaded_membership_func(torch.tensor([[0.1, 0.2, 0.3, 0.4]])).degrees,
+            )
+            # delete the file
+            os.remove("membership_func.pt")
 
 
 class TestGaussian(unittest.TestCase):
@@ -386,21 +445,6 @@ class TestGaussian(unittest.TestCase):
             mu_pytorch.cpu().detach().numpy(), target_membership_degrees, atol=1e-1
         ).all()
 
-    def test_save_and_load(self) -> None:
-        gaussian = Gaussian.create(number_of_variables=4, number_of_terms=4)
-        torch.save(gaussian, "gaussian.pt")
-        loaded_gaussian = torch.load("gaussian.pt")
-        assert torch.isclose(gaussian.centers, loaded_gaussian.centers).all()
-        assert torch.isclose(gaussian.widths, loaded_gaussian.widths).all()
-        assert torch.isclose(gaussian.sigmas, loaded_gaussian.sigmas).all()
-        assert torch.isclose(gaussian.area(), loaded_gaussian.area()).all()
-        assert torch.isclose(
-            gaussian(torch.tensor([[0.1, 0.2, 0.3, 0.4]])).degrees,
-            loaded_gaussian(torch.tensor([[0.1, 0.2, 0.3, 0.4]])).degrees,
-        ).all()
-        # delete the file
-        os.remove("gaussian.pt")
-
 
 class TestTriangular(unittest.TestCase):
     """
@@ -571,17 +615,3 @@ class TestTriangular(unittest.TestCase):
             rtol=1e-1,
             atol=1e-1,
         ).all()
-
-    def test_save_and_load(self) -> None:
-        triangular_mf = Triangular.create(number_of_variables=4, number_of_terms=4)
-        torch.save(triangular_mf, "triangular.pt")
-        loaded_triangular = torch.load("triangular.pt")
-        assert torch.isclose(triangular_mf.centers, loaded_triangular.centers).all()
-        assert torch.isclose(triangular_mf.widths, loaded_triangular.widths).all()
-        assert torch.isclose(triangular_mf.area(), loaded_triangular.area()).all()
-        assert torch.isclose(
-            triangular_mf(torch.tensor([[0.1, 0.2, 0.3, 0.4]])).degrees,
-            loaded_triangular(torch.tensor([[0.1, 0.2, 0.3, 0.4]])).degrees,
-        ).all()
-        # delete the file
-        os.remove("triangular.pt")
