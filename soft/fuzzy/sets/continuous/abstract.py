@@ -3,7 +3,8 @@ Implements an abstract class called ContinuousFuzzySet using PyTorch. All fuzzy 
 a continuous domain are derived from this class. Further, the Membership class is defined within,
 which contains a helpful interface understanding membership degrees.
 """
-from abc import abstractmethod
+import inspect
+from abc import abstractmethod, ABC
 from collections import namedtuple
 from typing import List, NoReturn, Union
 
@@ -28,7 +29,7 @@ class Membership(namedtuple(typename="Membership", field_names=("degrees", "mask
     """
 
 
-class ContinuousFuzzySet(torch.nn.Module):
+class ContinuousFuzzySet(ABC, torch.nn.Module):
     """
     A generic and abstract torch.nn.Module class that implements continuous fuzzy sets.
 
@@ -97,10 +98,9 @@ class ContinuousFuzzySet(torch.nn.Module):
         """
         del self._mask
 
-    @staticmethod
-    @abstractmethod
+    @classmethod
     def create(
-        number_of_variables: int, number_of_terms: int
+        cls, number_of_variables: int, number_of_terms: int
     ) -> Union[NoReturn, "ContinuousFuzzySet"]:
         """
         Create a fuzzy set with the given number of variables and terms, where each variable
@@ -115,31 +115,17 @@ class ContinuousFuzzySet(torch.nn.Module):
         Returns:
             A ContinuousFuzzySet object, or a NotImplementedError if the method is not implemented.
         """
-        raise NotImplementedError(
-            "The ContinuousFuzzySet has no defined membership function. Please create a class and "
-            "inherit from ContinuousFuzzySet, or use a predefined class, such as Gaussian."
-        )
-
-    # def create(self, number_of_variables: int, number_of_terms: int):
-    #     """
-    #     Create a fuzzy set with the given number of variables and terms, where each variable
-    #     has the same number of terms. For example, if we have two variables, then we might have
-    #     three terms for each variable, such as "low", "medium", and "high". This would result in
-    #     a total of nine fuzzy sets. The centers and widths are initialized randomly.
-    #
-    #     Args:
-    #         number_of_variables: The number of variables.
-    #         number_of_terms: The number of terms.
-    #
-    #     Returns:
-    #         None
-    #     """
-    #     self.centers = torch.nn.Parameter(
-    #         torch.randn(number_of_variables, number_of_terms)
-    #     ).float()
-    #     self.widths = torch.nn.Parameter(
-    #         torch.zeros(number_of_variables, number_of_terms)
-    #     ).float()
+        if inspect.isabstract(cls):
+            # this error is thrown if the class is abstract, such as ContinuousFuzzySet, but
+            # the method is not implemented (e.g., self.calculate_membership)
+            raise NotImplementedError(
+                "The ContinuousFuzzySet has no defined membership function. Please create a class "
+                "and inherit from ContinuousFuzzySet, or use a predefined class, such as Gaussian."
+            )
+        else:
+            centers = torch.randn(number_of_variables, number_of_terms)
+            widths = torch.rand(number_of_variables, number_of_terms)
+            return cls(centers=centers, widths=widths)
 
     def reshape_parameters(self):
         """

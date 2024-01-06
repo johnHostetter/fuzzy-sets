@@ -3,12 +3,14 @@ Test that various continuous fuzzy set implementations are working as intended, 
 Gaussian fuzzy set (i.e., membership function), and the Triangular fuzzy set (i.e., membership
 function).
 """
+import os
 import unittest
 import numpy as np
 
 import torch
 
 from utilities.reproducibility import set_rng
+from soft.fuzzy.sets.continuous.abstract import ContinuousFuzzySet
 from soft.fuzzy.sets.continuous.impl import LogisticCurve, Gaussian, Triangular
 
 
@@ -95,6 +97,22 @@ class TestLogistic(unittest.TestCase):
                 rtol=1e-4,
             )
         )
+
+
+class TestContinuousFuzzySet(unittest.TestCase):
+    """
+    Test the abstract ContinuousFuzzySet class.
+    """
+
+    def test_illegal_attempt_to_create(self) -> None:
+        """
+        Test that an illegal attempt to create a ContinuousFuzzySet raises an error.
+
+        Returns:
+            None
+        """
+        with self.assertRaises(NotImplementedError):
+            ContinuousFuzzySet.create(number_of_variables=4, number_of_terms=2)
 
 
 class TestGaussian(unittest.TestCase):
@@ -348,6 +366,41 @@ class TestGaussian(unittest.TestCase):
             mu_pytorch.cpu().float(), target_membership_degrees, rtol=1e-1
         ).all()
 
+    def test_create_random(self) -> None:
+        """
+        Test that a random fuzzy set of this type can be created and that the results are consistent
+        with the expected membership degrees.
+
+        Returns:
+            None
+        """
+        gaussian = Gaussian.create(number_of_variables=4, number_of_terms=4)
+        element = np.array([[0.0001712, 0.00393354, -0.03641258, -0.01936134]])
+        target_membership_degrees = gaussian_numpy(
+            element,
+            gaussian.centers.cpu().detach().numpy(),
+            gaussian.widths.cpu().detach().numpy(),
+        )
+        mu_pytorch = gaussian(torch.tensor(element[0])).degrees
+        assert np.isclose(
+            mu_pytorch.cpu().detach().numpy(), target_membership_degrees, atol=1e-1
+        ).all()
+
+    def test_save_and_load(self) -> None:
+        gaussian = Gaussian.create(number_of_variables=4, number_of_terms=4)
+        torch.save(gaussian, "gaussian.pt")
+        loaded_gaussian = torch.load("gaussian.pt")
+        assert torch.isclose(gaussian.centers, loaded_gaussian.centers).all()
+        assert torch.isclose(gaussian.widths, loaded_gaussian.widths).all()
+        assert torch.isclose(gaussian.sigmas, loaded_gaussian.sigmas).all()
+        assert torch.isclose(gaussian.area(), loaded_gaussian.area()).all()
+        assert torch.isclose(
+            gaussian(torch.tensor([[0.1, 0.2, 0.3, 0.4]])).degrees,
+            loaded_gaussian(torch.tensor([[0.1, 0.2, 0.3, 0.4]])).degrees,
+        ).all()
+        # delete the file
+        os.remove("gaussian.pt")
+
 
 class TestTriangular(unittest.TestCase):
     """
@@ -369,7 +422,7 @@ class TestTriangular(unittest.TestCase):
         mu_pytorch = triangular_mf(torch.tensor(element)).degrees
         mu_numpy = triangular_numpy(element, center, width)
 
-        # make sure the Gaussian parameters are still identical afterward
+        # make sure the Triangular parameters are still identical afterward
         assert torch.isclose(triangular_mf.centers.cpu(), torch.tensor(center)).all()
         assert torch.isclose(triangular_mf.widths.cpu(), torch.tensor(width)).all()
         # the outputs of the PyTorch and Numpy versions should be approx. equal
@@ -394,7 +447,7 @@ class TestTriangular(unittest.TestCase):
         mu_pytorch = triangular_mf(elements).degrees
         mu_numpy = triangular_numpy(elements.cpu().detach().numpy(), centers, widths)
 
-        # make sure the Gaussian parameters are still identical afterward
+        # make sure the Triangular parameters are still identical afterward
         assert torch.isclose(
             triangular_mf.centers.cpu(), torch.tensor(centers).float()
         ).all()
@@ -424,7 +477,7 @@ class TestTriangular(unittest.TestCase):
         mu_pytorch = triangular_mf(elements).degrees
         mu_numpy = triangular_numpy(elements.cpu().detach().numpy(), centers, widths)
 
-        # make sure the Gaussian parameters are still identical afterward
+        # make sure the Triangular parameters are still identical afterward
         assert torch.isclose(
             triangular_mf.centers.cpu(), torch.tensor(centers).float()
         ).all()
@@ -456,7 +509,7 @@ class TestTriangular(unittest.TestCase):
         mu_pytorch = triangular_mf(elements).degrees
         mu_numpy = triangular_numpy(elements.cpu().detach().numpy(), centers, widths)
 
-        # make sure the Gaussian parameters are still identical afterward
+        # make sure the Triangular parameters are still identical afterward
         assert torch.isclose(
             triangular_mf.centers.cpu(), torch.tensor(centers).float()
         ).all()
@@ -488,10 +541,47 @@ class TestTriangular(unittest.TestCase):
         mu_pytorch = triangular_mf(elements).degrees
         mu_numpy = triangular_numpy(elements.cpu().detach().numpy(), centers, widths)
 
-        # make sure the Gaussian parameters are still identical afterward
+        # make sure the Triangular parameters are still identical afterward
         assert (triangular_mf.centers.cpu().detach().numpy() == centers).all()
         assert np.isclose(triangular_mf.widths.cpu().detach().numpy(), widths).all()
         # the outputs of the PyTorch and Numpy versions should be approx. equal
         assert np.isclose(
             mu_pytorch.squeeze(dim=1).cpu().detach().numpy(), mu_numpy, atol=1e-2
         ).all()
+
+    def test_create_random(self) -> None:
+        """
+        Test that a random fuzzy set of this type can be created and that the results are consistent
+        with the expected membership degrees.
+
+        Returns:
+            None
+        """
+        triangular_mf = Triangular.create(number_of_variables=4, number_of_terms=4)
+        element = np.array([[0.0001712, 0.00393354, -0.03641258, -0.01936134]])
+        target_membership_degrees = triangular_numpy(
+            element,
+            triangular_mf.centers.cpu().detach().numpy(),
+            triangular_mf.widths.cpu().detach().numpy(),
+        )
+        mu_pytorch = triangular_mf(torch.tensor(element[0])).degrees
+        assert np.isclose(
+            mu_pytorch.cpu().detach().numpy(),
+            target_membership_degrees,
+            rtol=1e-1,
+            atol=1e-1,
+        ).all()
+
+    def test_save_and_load(self) -> None:
+        triangular_mf = Triangular.create(number_of_variables=4, number_of_terms=4)
+        torch.save(triangular_mf, "triangular.pt")
+        loaded_triangular = torch.load("triangular.pt")
+        assert torch.isclose(triangular_mf.centers, loaded_triangular.centers).all()
+        assert torch.isclose(triangular_mf.widths, loaded_triangular.widths).all()
+        assert torch.isclose(triangular_mf.area(), loaded_triangular.area()).all()
+        assert torch.isclose(
+            triangular_mf(torch.tensor([[0.1, 0.2, 0.3, 0.4]])).degrees,
+            loaded_triangular(torch.tensor([[0.1, 0.2, 0.3, 0.4]])).degrees,
+        ).all()
+        # delete the file
+        os.remove("triangular.pt")
