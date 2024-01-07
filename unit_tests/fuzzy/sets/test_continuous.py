@@ -5,9 +5,9 @@ function).
 """
 import os
 import unittest
-from collections import OrderedDict
 from pathlib import Path
 from typing import MutableMapping
+from collections import OrderedDict
 
 import numpy as np
 

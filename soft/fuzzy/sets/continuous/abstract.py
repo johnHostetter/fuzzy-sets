@@ -4,10 +4,10 @@ a continuous domain are derived from this class. Further, the Membership class i
 which contains a helpful interface understanding membership degrees.
 """
 import inspect
-from abc import abstractmethod, ABC
-from collections import namedtuple
 from pathlib import Path
-from typing import List, NoReturn, Union, OrderedDict, MutableMapping, Any
+from collections import namedtuple
+from abc import abstractmethod, ABC
+from typing import List, NoReturn, Union, MutableMapping, Any
 
 import torch
 import torchquad
@@ -179,18 +179,16 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
         return state_dict
 
     @staticmethod
-    def load(path: Path) -> "ContinuousFuzzySet":
+    def get_subclass(class_name: str) -> Union[NoReturn, "ContinuousFuzzySet"]:
         """
-        Load the fuzzy set from a file.
+        Get the subclass of ContinuousFuzzySet with the given class name.
+
+        Args:
+            class_name: The name of the subclass of ContinuousFuzzySet.
 
         Returns:
-            None
+            A subclass of ContinuousFuzzySet.
         """
-        state_dict: MutableMapping = torch.load(path)
-        centers = state_dict.pop("centers")
-        widths = state_dict.pop("widths")
-        labels = state_dict.pop("labels")
-        class_name = state_dict.pop("class_name")
         fuzzy_set_class = None
         for subclass in ContinuousFuzzySet.__subclasses__():
             if subclass.__name__ == class_name:
@@ -202,8 +200,24 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
                 f"ContinuousFuzzySet. Please ensure that the fuzzy set class is a subclass of "
                 f"ContinuousFuzzySet."
             )
-        else:
-            return fuzzy_set_class(centers=centers, widths=widths, labels=labels)
+        return fuzzy_set_class
+
+    @classmethod
+    def load(cls, path: Path) -> "ContinuousFuzzySet":
+        """
+        Load the fuzzy set from a file.
+
+        Returns:
+            None
+        """
+        state_dict: MutableMapping = torch.load(path)
+        centers = state_dict.pop("centers")
+        widths = state_dict.pop("widths")
+        labels = state_dict.pop("labels")
+        class_name = state_dict.pop("class_name")
+        return cls.get_subclass(class_name)(
+            centers=centers, widths=widths, labels=labels
+        )
 
     def reshape_parameters(self):
         """

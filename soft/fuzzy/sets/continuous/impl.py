@@ -1,12 +1,15 @@
 """
 Implements various membership functions by inheriting from ContinuousFuzzySet.
 """
-from typing import List, NoReturn, Union, Tuple, Any, T, Optional
+import pickle
+import inspect
+from pathlib import Path
+from natsort import natsorted
+from typing import List, NoReturn, Union, Tuple, Any, Dict, Set
 
 import torch
-from torch import device
 
-from utilities.functions import convert_to_tensor
+from utilities.functions import convert_to_tensor, get_object_attributes
 from soft.fuzzy.sets.continuous.abstract import ContinuousFuzzySet, Membership
 
 
@@ -25,11 +28,11 @@ class GroupedFuzzySets(torch.nn.Module):
     any kind of torch.nn.Module object.
     """
 
-    def __init__(self, modules=None, expandable=False, *args, **kwargs):
+    def __init__(self, modules_list=None, expandable=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if modules is None:
-            modules = []
-        self.modules_list = torch.nn.ModuleList(modules)
+        if modules_list is None:
+            modules_list = []
+        self.modules_list = torch.nn.ModuleList(modules_list)
         self.expandable = expandable
         self.epsilon = 0.5  # epsilon-completeness
 
@@ -68,31 +71,6 @@ class GroupedFuzzySets(torch.nn.Module):
         except AttributeError:
             return self.__getattr__(item)
 
-    def cuda(self: T, device: Optional[Union[int, "device"]] = None) -> T:
-        """
-        Moves all model parameters and buffers to the GPU.
-
-        Args:
-            device: The destination GPU device. Defaults to the current CUDA device.
-
-        Returns:
-            The FLC.
-        """
-        for module in self.modules_list:
-            module.cuda(self.device)
-        return super().cuda(device)
-
-    def cpu(self: T) -> T:
-        """
-        Moves all model parameters and buffers to the CPU.
-
-        Returns:
-            The FLC.
-        """
-        for module in self.modules_list:
-            module.cpu()
-        return super().cpu()
-
     def get_mask(self) -> Union[torch.Tensor, NoReturn]:
         if len(self.modules_list) > 0:
             module_masks: List[
@@ -102,6 +80,122 @@ class GroupedFuzzySets(torch.nn.Module):
                 module_masks.append(module.get_mask().float())
             return torch.cat(module_masks, dim=-1)
         raise ValueError("The torch.nn.ModuleList of GroupedFuzzySets is empty.")
+
+    def save(self, path: Path) -> None:
+        """
+        Save the model to the given path.
+
+        Args:
+            path: The path to save the GroupedFuzzySet to.
+
+        Returns:
+            None
+        """
+        # get the attributes that are local to the class, but not inherited from the super class
+        local_attributes_only = get_object_attributes(self)
+
+        # save a reference to the attributes (and their values) so that when iterating over them,
+        # we do not modify the dictionary while iterating over it (which would cause an error)
+        # we modify the dictionary by removing attributes that have a value of torch.nn.ModuleList
+        # because we want to save the modules in the torch.nn.ModuleList separately
+        local_attributes_only_items: List[Tuple[str, Any]] = list(
+            local_attributes_only.items()
+        )
+        for attr, value in local_attributes_only_items:
+            if isinstance(
+                value, torch.nn.ModuleList
+            ):  # e.g., attr may be self.modules_list
+                for idx, module in enumerate(value):
+                    subdirectory = path / attr / str(idx)
+                    subdirectory.mkdir(parents=True, exist_ok=True)
+                    if isinstance(module, ContinuousFuzzySet):
+                        # save the fuzzy set using the fuzzy set's special protocol
+                        module.save(
+                            path / attr / str(idx) / f"{module.__class__.__name__}.pt"
+                        )
+                    else:
+                        # unknown and unrecognized module, but attempt to save the module
+                        torch.save(
+                            module,
+                            path / attr / str(idx) / f"{module.__class__.__name__}.pt",
+                        )
+                # remove the torch.nn.ModuleList from the local attributes
+                del local_attributes_only[attr]
+
+        # save the remaining attributes
+        with open(path / f"{self.__class__.__name__}.pickle", "wb") as handle:
+            pickle.dump(local_attributes_only, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    @classmethod
+    def load(cls, path: Path) -> "GroupedFuzzySets":
+        """
+        Load the model from the given path.
+
+        Args:
+            path: The path to load the GroupedFuzzySet from.
+
+        Returns:
+            The loaded GroupedFuzzySet.
+        """
+        modules_list = []
+        local_attributes_only: Dict[str, Any] = {}
+        for idx, file_path in enumerate(path.iterdir()):
+            if ".pickle" in file_path.name:
+                # load the remaining attributes
+                with open(file_path, "rb") as handle:
+                    local_attributes_only.update(pickle.load(handle))
+            elif file_path.is_dir():
+                for subdirectory in natsorted(file_path.iterdir()):
+                    if subdirectory.is_dir():
+                        module_path: Path = list(subdirectory.glob("*.pt"))[0]
+                        # load the fuzzy set using the fuzzy set's special protocol
+                        class_name: str = module_path.name.split(".pt")[0]
+                        try:
+                            modules_list.append(
+                                ContinuousFuzzySet.get_subclass(class_name).load(
+                                    module_path
+                                )
+                            )
+                        except ValueError:
+                            # unknown and unrecognized module, but attempt to load the module
+                            modules_list.append(torch.load(module_path))
+                    else:
+                        raise UserWarning(
+                            f"Unexpected file found in {file_path}: {module_path}"
+                        )
+                local_attributes_only[file_path.name] = modules_list
+
+        # of the remaining attributes, we must determine which are shared between the
+        # super class and the local class, otherwise we will get an error when trying to
+        # initialize the local class (more specifically, the torch.nn.Module __init__ method
+        # requires self.call_super_init to be set to True, but then the attribute would exist
+        # as a super class attribute, and not a local class attribute)
+        shared_args: Set[str] = set(
+            inspect.signature(cls).parameters.keys()
+        ).intersection(local_attributes_only.keys())
+
+        # create the GroupedFuzzySet object with the shared arguments
+        # (e.g., modules_list, expandable)
+        grouped_fuzzy_set: GroupedFuzzySets = cls(
+            **{
+                key: value
+                for key, value in local_attributes_only.items()
+                if key in shared_args
+            }
+        )
+
+        # determine the remaining attributes
+        remaining_args: Dict[str, Any] = {
+            key: value
+            for key, value in local_attributes_only.items()
+            if key not in shared_args
+        }
+
+        # set the remaining attributes
+        for attr, value in remaining_args.items():
+            setattr(grouped_fuzzy_set, attr, value)
+
+        return grouped_fuzzy_set
 
     def calculate_module_responses(
         self, observations
