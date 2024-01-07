@@ -90,9 +90,9 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
     @mask.deleter
     def mask(self):
         """
-        Delete the mask of the fuzzy set, where the mask is a tensor of the same shape as the centers
-        and widths. The mask has a value of 1 if the fuzzy set exists, and 0 if the fuzzy set does
-        not exist.
+        Delete the mask of the fuzzy set, where the mask is a tensor of the same shape as the
+        centers and widths. The mask has a value of 1 if the fuzzy set exists, and 0 if the fuzzy
+        set does not exist.
 
         Returns:
             torch.Tensor
@@ -123,10 +123,9 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
                 "The ContinuousFuzzySet has no defined membership function. Please create a class "
                 "and inherit from ContinuousFuzzySet, or use a predefined class, such as Gaussian."
             )
-        else:
-            centers = torch.randn(number_of_variables, number_of_terms)
-            widths = torch.rand(number_of_variables, number_of_terms)
-            return cls(centers=centers, widths=widths)
+        centers = torch.randn(number_of_variables, number_of_terms)
+        widths = torch.rand(number_of_variables, number_of_terms)
+        return cls(centers=centers, widths=widths)
 
     def __eq__(self, other: Any):
         """
@@ -168,7 +167,7 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
                 f"The path to save the fuzzy set must have a file extension of '.pt', "
                 f"but got {path.name}"
             )
-        elif ".pth" in path.name:
+        if ".pth" in path.name:
             raise ValueError(
                 f"The path to save the fuzzy set must have a file extension of '.pt', "
                 f"but got {path.name}. Please change the file extension to '.pt' as it is not "

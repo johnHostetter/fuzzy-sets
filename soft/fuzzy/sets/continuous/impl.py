@@ -4,10 +4,10 @@ Implements various membership functions by inheriting from ContinuousFuzzySet.
 import pickle
 import inspect
 from pathlib import Path
-from natsort import natsorted
 from typing import List, NoReturn, Union, Tuple, Any, Dict, Set
 
 import torch
+from natsort import natsorted
 
 from utilities.functions import convert_to_tensor, get_object_attributes
 from soft.fuzzy.sets.continuous.abstract import ContinuousFuzzySet, Membership
@@ -139,7 +139,7 @@ class GroupedFuzzySets(torch.nn.Module):
         """
         modules_list = []
         local_attributes_only: Dict[str, Any] = {}
-        for idx, file_path in enumerate(path.iterdir()):
+        for file_path in path.iterdir():
             if ".pickle" in file_path.name:
                 # load the remaining attributes
                 with open(file_path, "rb") as handle:
