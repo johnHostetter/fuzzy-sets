@@ -56,7 +56,7 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
         super().__init__()
         self.centers = torch.nn.Parameter(convert_to_tensor(centers).float())
         self.widths = torch.nn.Parameter(convert_to_tensor(widths).float())
-        self._mask = self.widths > 0.0
+        self.mask = self.widths > 0.0
         self.labels = labels
 
     @property

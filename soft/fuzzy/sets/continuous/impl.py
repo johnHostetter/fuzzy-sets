@@ -71,15 +71,15 @@ class GroupedFuzzySets(torch.nn.Module):
         except AttributeError:
             return self.__getattr__(item)
 
-    def get_mask(self) -> Union[torch.Tensor, NoReturn]:
-        if len(self.modules_list) > 0:
-            module_masks: List[
-                torch.Tensor
-            ] = []  # the secondary response denoting module filter
-            for module in self.modules_list:
-                module_masks.append(module.get_mask().float())
-            return torch.cat(module_masks, dim=-1)
-        raise ValueError("The torch.nn.ModuleList of GroupedFuzzySets is empty.")
+    # def get_mask(self) -> Union[torch.Tensor, NoReturn]:
+    #     if len(self.modules_list) > 0:
+    #         module_masks: List[
+    #             torch.Tensor
+    #         ] = []  # the secondary response denoting module filter
+    #         for module in self.modules_list:
+    #             module_masks.append(module.get_mask().float())
+    #         return torch.cat(module_masks, dim=-1)
+    #     raise ValueError("The torch.nn.ModuleList of GroupedFuzzySets is empty.")
 
     def save(self, path: Path) -> None:
         """
@@ -213,8 +213,8 @@ class GroupedFuzzySets(torch.nn.Module):
                 module_memberships.append(membership.degrees)
                 module_masks.append(membership.mask.float())
             return Membership(
-                degrees=torch.cat(module_memberships, dim=-1),
-                mask=torch.cat(module_masks, dim=-1),
+                degrees=torch.cat(module_memberships, dim=-1).to(observations.device),
+                mask=torch.cat(module_masks, dim=-1).to(observations.device),
             )
         raise ValueError("The torch.nn.ModuleList of GroupedFuzzySets is empty.")
 
