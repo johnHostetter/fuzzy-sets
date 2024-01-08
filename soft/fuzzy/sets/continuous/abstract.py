@@ -13,7 +13,7 @@ import torch
 import torchquad
 import numpy as np
 
-from utilities.functions import convert_to_tensor
+from soft.utilities.functions import convert_to_tensor
 
 
 class Membership(namedtuple(typename="Membership", field_names=("degrees", "mask"))):

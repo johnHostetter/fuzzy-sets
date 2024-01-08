@@ -9,7 +9,7 @@ from typing import List, NoReturn, Union, Tuple, Any, Dict, Set
 import torch
 from natsort import natsorted
 
-from utilities.functions import convert_to_tensor, get_object_attributes
+from soft.utilities.functions import convert_to_tensor, get_object_attributes
 from soft.fuzzy.sets.continuous.abstract import ContinuousFuzzySet, Membership
 
 

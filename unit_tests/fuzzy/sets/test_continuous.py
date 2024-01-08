@@ -13,7 +13,7 @@ import numpy as np
 
 import torch
 
-from utilities.reproducibility import set_rng
+from soft.utilities.reproducibility import set_rng
 from soft.fuzzy.sets.continuous.abstract import ContinuousFuzzySet
 from soft.fuzzy.sets.continuous.impl import LogisticCurve, Gaussian, Triangular
 
