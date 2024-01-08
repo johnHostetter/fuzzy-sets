@@ -236,7 +236,7 @@ class GroupedFuzzySets(torch.nn.Module):
         # if mu.grad_fn is None and self.expandable:
         #     print("grad_fn of mu is None, but might be in target net tho")
 
-        if self.expandable and False:
+        if self.expandable:
             # find where the new centers should be added, if any
             new_centers = (
                 observations * (module_responses.max(dim=-1).values <= self.epsilon)
