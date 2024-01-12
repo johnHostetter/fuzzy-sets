@@ -60,7 +60,7 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
         self.labels = labels
 
     @property
-    def mask(self):
+    def mask(self) -> torch.Tensor:
         """
         Get the mask of the fuzzy set, where the mask is a tensor of the same shape as the centers
         and widths. The mask has a value of 1 if the fuzzy set exists, and 0 if the fuzzy set does
@@ -72,7 +72,7 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
         return self._mask
 
     @mask.setter
-    def mask(self, mask):
+    def mask(self, mask) -> None:
         """
         Set the mask of the fuzzy set, where the mask is a tensor of the same shape as the centers
         and widths. The mask has a value of 1 if the fuzzy set exists, and 0 if the fuzzy set does
@@ -83,9 +83,7 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
         """
         # negative widths are a special flag to indicate that the fuzzy set
         # at that location does not actually exist
-        self._mask = torch.nn.Parameter(
-            mask.int(), requires_grad=False
-        )  # keep only the valid fuzzy sets
+        self._mask = torch.Tensor(mask.int())  # keep only the valid fuzzy sets
 
     @mask.deleter
     def mask(self):
@@ -127,7 +125,7 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
         widths = torch.rand(number_of_variables, number_of_terms)
         return cls(centers=centers, widths=widths)
 
-    def __eq__(self, other: Any):
+    def __eq__(self, other: Any) -> bool:
         """
         Check if the fuzzy set is equal to another fuzzy set.
 

@@ -446,7 +446,7 @@ class Gaussian(ContinuousFuzzySet):
                     / (torch.pow(self.widths, 2) + 1e-32)
                 )
             )
-            * self.mask
+            * self.mask.to(observations.device)
             # .unsqueeze(dim=0)
             # .transpose(1, 2)
         )
@@ -516,7 +516,7 @@ class Lorentzian(ContinuousFuzzySet):
         self.widths = sigmas
 
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
-        return self.mask * (
+        return self.mask.to(observations.device) * (
             1
             / (
                 torch.pow(
@@ -586,10 +586,7 @@ class Triangular(ContinuousFuzzySet):
         Returns:
             The membership degrees of the observations for the Triangular fuzzy set.
         """
-        return (
-            torch.max(
-                1.0 - (1.0 / self.widths) * torch.abs(observations - self.centers),
-                torch.tensor(0.0),
-            )
-            * self.mask
-        )
+        return torch.max(
+            1.0 - (1.0 / self.widths) * torch.abs(observations - self.centers),
+            torch.tensor(0.0),
+        ) * self.mask.to(observations.device)
