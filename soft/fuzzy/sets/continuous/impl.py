@@ -11,6 +11,7 @@ from natsort import natsorted
 
 from soft.utilities.functions import convert_to_tensor, get_object_attributes
 from soft.fuzzy.sets.continuous.abstract import ContinuousFuzzySet, Membership
+from soft.fuzzy.unsupervised.granulation.online.clip import make_first_fuzzy_sets
 
 
 class GroupedFuzzySets(torch.nn.Module):
@@ -210,8 +211,8 @@ class GroupedFuzzySets(torch.nn.Module):
             ] = []  # the secondary response denoting module filter
             for module in self.modules_list:
                 membership: Membership = module(observations)
-                module_memberships.append(membership.degrees)
-                module_masks.append(membership.mask.float())
+                module_memberships.append(membership.degrees.cpu())
+                module_masks.append(membership.mask.float().cpu())
             return Membership(
                 degrees=torch.cat(module_memberships, dim=-1).to(observations.device),
                 mask=torch.cat(module_masks, dim=-1).to(observations.device),
@@ -238,49 +239,107 @@ class GroupedFuzzySets(torch.nn.Module):
 
         if self.expandable and self.training:
             # find where the new centers should be added, if any
-            new_centers = (
-                observations * (module_responses.max(dim=-1).values <= self.epsilon)
-            ) + ((module_responses.max(dim=-1).values > self.epsilon) / 0).nan_to_num(
-                0.0, posinf=torch.nan
-            )
-            # print(mu.max(dim=-1).values, observations)
-            nc: List[torch.Tensor] = [
-                torch.tensor(
-                    list(
-                        set(
-                            new_centers[:, var_idx][
-                                ~new_centers[:, var_idx].isnan()
-                            ].tolist()
-                        )
-                    )
-                )
-                for var_idx in range(new_centers.shape[-1])
-            ]
 
-            # doing some trick w. dynamically expandable networks
-            sets: List[Any] = []  # 'Any' as in *any* child/impl. of ContinuousFuzzySet
-            empty_sets: List[int] = []
-            for idx, n in enumerate(nc):
-                if len(n) == 0:
-                    empty_sets.append(idx)
-                sets.append(
-                    Gaussian(
-                        centers=n,
-                        widths=torch.randn_like(n).abs(),
-                    )
+            # if LogGaussian was used, then we can use the following to check for real membership degrees:
+            tmp_module_responses = module_responses.clone()
+            tmp_module_responses = tmp_module_responses.exp()
+
+            new_centers = (
+                observations * (
+                    tmp_module_responses.max(dim=-1).values <= self.epsilon
+                    )  # select the input dimensions where the module response is less than epsilon
+            ) + ((tmp_module_responses.max(dim=-1).values > self.epsilon) / 0).nan_to_num(
+                0.0, posinf=torch.nan  # True (1) / 0 = inf, so we replace with torch.nan and False (0) / 0 = 0
+            )  # select the input dimensions where the module response is greater than epsilon
+
+            if new_centers.isnan().all():
+                # no new centers needed
+                return Membership(degrees=module_responses, mask=module_masks)
+            
+            terms: List[Gaussian] = []
+            make_first_fuzzy_sets(
+                data_point=new_centers.nan_to_num(0).mean(dim=0),
+                minimums=observations.min(dim=0).values,
+                maximums=observations.max(dim=0).values,
+                terms=terms,
+                alpha=0.2
+            )
+
+            new_widths = torch.Tensor([term.widths.item() for term in terms])
+
+            assert new_widths.isnan().any() == False
+
+            # create the widths for the new centers
+            new_widths = (
+                # only keep the widths for the entries that are not torch.nan
+                ~torch.isnan(new_centers) * new_widths.to(new_centers.device)
+                ) + (torch.isnan(new_centers) * -1)
+
+            # the above result is a tensor that contains the new centers, but also contains torch.nan
+            # in the places where a new center is not needed
+
+            # # print(mu.max(dim=-1).values, observations)
+            # nc: List[torch.Tensor] = [
+            #     torch.tensor(
+            #         list(
+            #             set(
+            #                 new_centers[:, var_idx][
+            #                     ~new_centers[:, var_idx].isnan()
+            #                 ].tolist()
+            #             )
+            #         )
+            #     )
+            #     for var_idx in range(new_centers.shape[-1])
+            # ]
+
+            # # doing some trick w. dynamically expandable networks
+            # sets: List[Any] = []  # 'Any' as in *any* child/impl. of ContinuousFuzzySet
+            # empty_sets: List[int] = []
+            # for idx, n in enumerate(nc):
+            #     if len(n) == 0:
+            #         empty_sets.append(idx)
+            #     sets.append(
+            #         Gaussian(
+            #             centers=n,
+            #             widths=torch.randn_like(n).abs(),
+            #         )
+            #     )
+            # if len(sets) > 0 and len(empty_sets) < len(sets):
+            #     # take the fuzzy sets, and make a ContinuousFuzzySet efficient object
+            #     g = ContinuousFuzzySet.stack(sets)
+            g = LogGaussian(
+                centers=new_centers.nan_to_num(0.0).transpose(0, 1),
+                widths=new_widths.transpose(0, 1),
+            )
+            new_idx = len(self.modules_list)
+            print(
+                f"adding {g.centers.shape}; num of modules already: {len(self.modules_list)}"
+            )
+            # print(f"to dimensions: {set(range(len(sets))) - set(empty_sets)}")
+            self.modules_list.add_module(str(new_idx), g)
+
+            # reduce the number of torch.nn.Modules in the list for computational efficiency
+            # (this is not necessary, but it is a good idea)
+            # modules: List[Any] = []
+            if len(self.modules_list) > 3:
+                centers, widths = [], []
+                for module in self.modules_list[1:]:
+                    if module.centers.shape[-1] > 1:
+                        centers.append(module.centers.mean(dim=-1, keepdim=True))
+                        widths.append(module.widths.max(dim=-1, keepdim=True).values)
+                    else:
+                        centers.append(module.centers)
+                        widths.append(module.widths)
+                module = LogGaussian(
+                    centers=torch.cat(centers, dim=-1),
+                    widths=torch.cat(widths, dim=-1),
                 )
-            if len(sets) > 0 and len(empty_sets) < len(sets):
-                # take the fuzzy sets, and make a ContinuousFuzzySet efficient object
-                g = ContinuousFuzzySet.stack(sets)
-                new_idx = len(self.modules_list)
-                print(
-                    f"adding {g.centers.shape}; num of modules already: {len(self.modules_list)}"
-                )
-                print(f"to dimensions: {set(range(len(sets))) - set(empty_sets)}")
-                self.modules_list.add_module(str(new_idx), g)
-                module_responses, module_masks = self.calculate_module_responses(
-                    observations
-                )
+                print(module.centers.shape)
+                self.modules_list = torch.nn.ModuleList([self.modules_list[0], module])
+
+            module_responses, module_masks = self.calculate_module_responses(
+                observations
+            )
 
         return Membership(degrees=module_responses, mask=module_masks)
 
@@ -311,9 +370,11 @@ class GroupedFuzzySets(torch.nn.Module):
 #         )
 
 
-class Gaussian(ContinuousFuzzySet):
+class LogGaussian(ContinuousFuzzySet):
     """
-    Implementation of the Gaussian membership function, written in PyTorch.
+    Implementation of the Log Gaussian membership function, written in PyTorch.
+    This is a modified version that helps when the dimensionality is high,
+    and TSK product inference engine will be used.
     """
 
     def __init__(
@@ -436,20 +497,16 @@ class Gaussian(ContinuousFuzzySet):
         #     )
 
         return (
-            torch.exp(
-                -1.0
-                * (
-                    torch.pow(
-                        observations - self.centers,
-                        2,
-                    )
-                    / (torch.pow(self.widths, 2) + 1e-32)
+            -1.0 * (
+                torch.pow(
+                    observations - self.centers,
+                    2,
                 )
+                / (torch.pow(self.widths, 2) + 1e-32)
             )
-            * self.mask.to(observations.device)
+        ) * self.mask.to(observations.device)
             # .unsqueeze(dim=0)
             # .transpose(1, 2)
-        )
 
         # return (
         #     torch.exp(
@@ -468,6 +525,13 @@ class Gaussian(ContinuousFuzzySet):
         #     observations.view(observations.shape[0], -1).unsqueeze(dim=1),
         #     self.centers.view(self.centers.shape[0], -1),
         # )
+
+
+class Gaussian(LogGaussian):
+    def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
+        return super().calculate_membership(
+            observations
+            ).exp() * self.mask.to(observations.device)
 
 
 #
@@ -520,7 +584,7 @@ class Lorentzian(ContinuousFuzzySet):
             1
             / (
                 torch.pow(
-                    (self.centers - observations.unsqueeze(dim=-1))
+                    (self.centers - observations)
                     / (0.5 * self.widths),
                     2,
                 )
