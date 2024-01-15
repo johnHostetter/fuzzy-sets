@@ -16,6 +16,16 @@ import numpy as np
 from soft.utilities.functions import convert_to_tensor
 
 
+def all_subclasses(cls) -> List["ContinuousFuzzySet"]:
+    """
+    Get all subclasses of ContinuousFuzzySet.
+
+    Returns:
+        A list of subclasses of ContinuousFuzzySet.
+    """
+    return {cls}.union(s for c in cls.__subclasses__() for s in all_subclasses(c))
+
+
 class Membership(namedtuple(typename="Membership", field_names=("degrees", "mask"))):
     """
     The Membership class contains information describing both membership *degrees*
@@ -187,7 +197,7 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
             A subclass of ContinuousFuzzySet.
         """
         fuzzy_set_class = None
-        for subclass in ContinuousFuzzySet.__subclasses__():
+        for subclass in all_subclasses(ContinuousFuzzySet):
             if subclass.__name__ == class_name:
                 fuzzy_set_class = subclass
                 break

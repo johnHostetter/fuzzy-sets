@@ -9,9 +9,12 @@ from typing import List, NoReturn, Union, Tuple, Any, Dict, Set
 import torch
 from natsort import natsorted
 
-from soft.utilities.functions import convert_to_tensor, get_object_attributes
+from soft.utilities.functions import (
+    convert_to_tensor,
+    get_object_attributes,
+    find_centers_and_widths,
+)
 from soft.fuzzy.sets.continuous.abstract import ContinuousFuzzySet, Membership
-from soft.fuzzy.unsupervised.granulation.online.clip import make_first_fuzzy_sets
 
 
 class GroupedFuzzySets(torch.nn.Module):
@@ -245,35 +248,38 @@ class GroupedFuzzySets(torch.nn.Module):
             tmp_module_responses = tmp_module_responses.exp()
 
             new_centers = (
-                observations * (
+                observations
+                * (
                     tmp_module_responses.max(dim=-1).values <= self.epsilon
-                    )  # select the input dimensions where the module response is less than epsilon
-            ) + ((tmp_module_responses.max(dim=-1).values > self.epsilon) / 0).nan_to_num(
-                0.0, posinf=torch.nan  # True (1) / 0 = inf, so we replace with torch.nan and False (0) / 0 = 0
+                )  # select the input dimensions where the module response is less than epsilon
+            ) + (
+                (tmp_module_responses.max(dim=-1).values > self.epsilon) / 0
+            ).nan_to_num(
+                0.0,
+                posinf=torch.nan,  # True (1) / 0 = inf, so we replace with torch.nan and False (0) / 0 = 0
             )  # select the input dimensions where the module response is greater than epsilon
 
             if new_centers.isnan().all():
                 # no new centers needed
                 return Membership(degrees=module_responses, mask=module_masks)
-            
-            terms: List[Gaussian] = []
-            make_first_fuzzy_sets(
+
+            terms: List[Dict[str, float]] = find_centers_and_widths(
                 data_point=new_centers.nan_to_num(0).mean(dim=0),
                 minimums=observations.min(dim=0).values,
                 maximums=observations.max(dim=0).values,
-                terms=terms,
-                alpha=0.2
+                alpha=0.2,
             )
 
-            new_widths = torch.Tensor([term.widths.item() for term in terms])
+            new_widths = torch.Tensor([term["widths"].item() for term in terms])
 
             assert new_widths.isnan().any() == False
 
             # create the widths for the new centers
             new_widths = (
                 # only keep the widths for the entries that are not torch.nan
-                ~torch.isnan(new_centers) * new_widths.to(new_centers.device)
-                ) + (torch.isnan(new_centers) * -1)
+                ~torch.isnan(new_centers)
+                * new_widths.to(new_centers.device)
+            ) + (torch.isnan(new_centers) * -1)
 
             # the above result is a tensor that contains the new centers, but also contains torch.nan
             # in the places where a new center is not needed
@@ -497,7 +503,8 @@ class LogGaussian(ContinuousFuzzySet):
         #     )
 
         return (
-            -1.0 * (
+            -1.0
+            * (
                 torch.pow(
                     observations - self.centers,
                     2,
@@ -505,8 +512,8 @@ class LogGaussian(ContinuousFuzzySet):
                 / (torch.pow(self.widths, 2) + 1e-32)
             )
         ) * self.mask.to(observations.device)
-            # .unsqueeze(dim=0)
-            # .transpose(1, 2)
+        # .unsqueeze(dim=0)
+        # .transpose(1, 2)
 
         # return (
         #     torch.exp(
@@ -529,9 +536,9 @@ class LogGaussian(ContinuousFuzzySet):
 
 class Gaussian(LogGaussian):
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
-        return super().calculate_membership(
-            observations
-            ).exp() * self.mask.to(observations.device)
+        return super().calculate_membership(observations).exp() * self.mask.to(
+            observations.device
+        )
 
 
 #
@@ -584,8 +591,7 @@ class Lorentzian(ContinuousFuzzySet):
             1
             / (
                 torch.pow(
-                    (self.centers - observations)
-                    / (0.5 * self.widths),
+                    (self.centers - observations) / (0.5 * self.widths),
                     2,
                 )
                 + 1
