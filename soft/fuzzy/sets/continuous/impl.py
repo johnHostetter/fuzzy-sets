@@ -40,23 +40,6 @@ class GroupedFuzzySets(torch.nn.Module):
         self.expandable = expandable
         self.epsilon = 0.5  # epsilon-completeness
 
-        # self.neurons = torch.nn.ModuleList()
-        # for idx in range(64):
-        #     neuron = torch.nn.Sequential(
-        #         torch.nn.Linear(
-        #             in_features=49,
-        #             out_features=128,
-        #         ),
-        #         torch.nn.LeakyReLU(),
-        #         torch.nn.Linear(
-        #             in_features=128,
-        #             out_features=10,
-        #         ),
-        #         torch.nn.ReLU()
-        #         # torch.nn.Sigmoid(),
-        #     )
-        #     self.neurons.add_module(f"{idx}", neuron)
-
     def __getattribute__(self, item):
         try:
             if item in ("centers", "widths", "sigmas"):
@@ -74,16 +57,6 @@ class GroupedFuzzySets(torch.nn.Module):
             return object.__getattribute__(self, item)
         except AttributeError:
             return self.__getattr__(item)
-
-    # def get_mask(self) -> Union[torch.Tensor, NoReturn]:
-    #     if len(self.modules_list) > 0:
-    #         module_masks: List[
-    #             torch.Tensor
-    #         ] = []  # the secondary response denoting module filter
-    #         for module in self.modules_list:
-    #             module_masks.append(module.get_mask().float())
-    #         return torch.cat(module_masks, dim=-1)
-    #     raise ValueError("The torch.nn.ModuleList of GroupedFuzzySets is empty.")
 
     def save(self, path: Path) -> None:
         """
@@ -224,28 +197,15 @@ class GroupedFuzzySets(torch.nn.Module):
 
     def forward(self, observations) -> Membership:
         observations = convert_to_tensor(observations)
-
-        # memberships = []
-        # for idx, neuron in enumerate(self.neurons):
-        #     memberships.append(
-        #         neuron(observations[:, idx, :, :].flatten(start_dim=1)).unsqueeze(dim=1)
-        #     )
-        # return Membership(
-        #     degrees=torch.cat(memberships, dim=1),
-        #     mask=torch.zeros((len(self.neurons), 10)),
-        # )
-
         module_responses, module_masks = self.calculate_module_responses(observations)
-
-        # if mu.grad_fn is None and self.expandable:
-        #     print("grad_fn of mu is None, but might be in target net tho")
 
         if self.expandable and self.training:
             # find where the new centers should be added, if any
 
-            # if LogGaussian was used, then we can use the following to check for real membership degrees:
             tmp_module_responses = module_responses.clone()
-            tmp_module_responses = tmp_module_responses.exp()
+            # if LogGaussian was used, then use the following to check for real membership degrees:
+            if any([isinstance(module, LogGaussian) for module in self.modules_list]):
+                tmp_module_responses = tmp_module_responses.exp()
 
             new_centers = (
                 observations
@@ -326,7 +286,6 @@ class GroupedFuzzySets(torch.nn.Module):
 
             # reduce the number of torch.nn.Modules in the list for computational efficiency
             # (this is not necessary, but it is a good idea)
-            # modules: List[Any] = []
             if len(self.modules_list) > 3:
                 centers, widths = [], []
                 for module in self.modules_list[1:]:

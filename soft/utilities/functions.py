@@ -2,7 +2,7 @@
 Utility functions, such as for getting the powerset of an iterable.
 """
 import inspect
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Set
 from collections.abc import Iterable
 from itertools import chain, combinations
 
@@ -26,6 +26,16 @@ def powerset(iterable: Iterable, min_items: int):
         combinations(list(iterable), r)
         for r in range(min_items, len(list(iterable)) + 1)
     )
+
+
+def all_subclasses(cls) -> Set[Any]:
+    """
+    Get all subclasses of the given class, recursively.
+
+    Returns:
+        A set of all subclasses of the given class.
+    """
+    return {cls}.union(s for c in cls.__subclasses__() for s in all_subclasses(c))
 
 
 def find_centers_and_widths(

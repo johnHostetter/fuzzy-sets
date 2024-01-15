@@ -7,23 +7,13 @@ import inspect
 from pathlib import Path
 from collections import namedtuple
 from abc import abstractmethod, ABC
-from typing import List, NoReturn, Union, MutableMapping, Any
+from typing import List, NoReturn, Union, MutableMapping, Any, Set
 
 import torch
 import torchquad
 import numpy as np
 
-from soft.utilities.functions import convert_to_tensor
-
-
-def all_subclasses(cls) -> List["ContinuousFuzzySet"]:
-    """
-    Get all subclasses of ContinuousFuzzySet.
-
-    Returns:
-        A list of subclasses of ContinuousFuzzySet.
-    """
-    return {cls}.union(s for c in cls.__subclasses__() for s in all_subclasses(c))
+from soft.utilities.functions import convert_to_tensor, all_subclasses
 
 
 class Membership(namedtuple(typename="Membership", field_names=("degrees", "mask"))):
