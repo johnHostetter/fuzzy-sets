@@ -42,6 +42,10 @@ class GroupedFuzzySets(torch.nn.Module):
         # keep track of minimums and maximums if for fuzzy set width calculation
         self.minimums: Union[None, torch.Tensor] = None
         self.maximums: Union[None, torch.Tensor] = None
+        # store data that we have seen to later add new fuzzy sets
+        self.data_seen: Union[None, List[torch.Tensor]] = None
+        # after we see this many data points, we will update the fuzzy sets
+        self.data_limit_until_update: int = 256
 
     def __getattribute__(self, item):
         try:
@@ -217,17 +221,13 @@ class GroupedFuzzySets(torch.nn.Module):
             if any([isinstance(module, LogGaussian) for module in self.modules_list]):
                 tmp_module_responses = tmp_module_responses.exp()
 
-            new_centers = (
-                observations
-                * (
-                    tmp_module_responses.max(dim=-1).values <= self.epsilon
-                )  # select the input dimensions where the module response is less than epsilon
-            ) + (
-                (tmp_module_responses.max(dim=-1).values > self.epsilon) / 0
-            ).nan_to_num(
-                0.0,
-                posinf=torch.nan,  # True (1) / 0 = inf, so we replace with torch.nan and False (0) / 0 = 0
-            )  # select the input dimensions where the module response is greater than epsilon
+            # Create a new matrix with nan values
+            new_centers = torch.full_like(observations, float('nan'))
+
+            # Use torch.where to update values that satisfy the condition
+            new_centers = torch.where(
+                tmp_module_responses.max(dim=-1).values < self.epsilon, observations, new_centers
+            )
 
             if new_centers.isnan().all():
                 # no new centers needed
