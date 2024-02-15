@@ -7,7 +7,7 @@ import inspect
 from pathlib import Path
 from collections import namedtuple
 from abc import abstractmethod, ABC
-from typing import List, NoReturn, Union, MutableMapping, Any, Set
+from typing import List, NoReturn, Union, MutableMapping, Any
 
 import torch
 import torchquad

@@ -7,7 +7,9 @@ from pathlib import Path
 from typing import List, NoReturn, Union, Tuple, Any, Dict, Set
 
 import torch
+import numpy as np
 from natsort import natsorted
+from scipy.signal import find_peaks
 
 from soft.utilities.functions import (
     convert_to_tensor,
@@ -32,7 +34,7 @@ class GroupedFuzzySets(torch.nn.Module):
     any kind of torch.nn.Module object.
     """
 
-    def __init__(self, modules_list=None, expandable=False, *args, **kwargs):
+    def __init__(self, *args, modules_list=None, expandable=False, **kwargs):
         super().__init__(*args, **kwargs)
         if modules_list is None:
             modules_list = []
@@ -235,7 +237,7 @@ class GroupedFuzzySets(torch.nn.Module):
             if len(self.data_seen) % self.data_limit_until_update == 0:
                 # find where the new centers should be added, if any
                 tmp_module_responses = module_responses.clone()
-                # if LogGaussian was used, then use the following to check for real membership degrees:
+                # if LogGaussian was used, then use following to check for real membership degrees:
                 if any([type(module) == LogGaussian for module in self.modules_list]):
                     tmp_module_responses = tmp_module_responses.exp()
                     assert tmp_module_responses.max().item() <= 1.0
@@ -244,9 +246,6 @@ class GroupedFuzzySets(torch.nn.Module):
                 exemplars = torch.vstack(
                     (all_data.min(dim=0).values, all_data.max(dim=0).values)
                 )
-
-                import numpy as np
-                from scipy.signal import find_peaks
 
                 def evenly_spaced_exemplars(data, n):
                     peaks, _ = find_peaks(data)
@@ -300,7 +299,7 @@ class GroupedFuzzySets(torch.nn.Module):
 
                     new_widths = torch.Tensor([term["widths"].item() for term in terms])
 
-                    assert new_widths.isnan().any() == False
+                    assert new_widths.isnan().any() is False
 
                     # create the widths for the new centers
                     new_widths = (
@@ -309,7 +308,7 @@ class GroupedFuzzySets(torch.nn.Module):
                         * new_widths
                     ) + (torch.isnan(new_centers) * -1)
 
-                    # the above result is a tensor that contains the new centers, but also contains torch.nan
+                    # above result is tensor that contains new centers, but also contains torch.nan
                     # in the places where a new center is not needed
 
                     # # print(mu.max(dim=-1).values, observations)
@@ -352,7 +351,7 @@ class GroupedFuzzySets(torch.nn.Module):
                     )
                     new_idx = len(self.modules_list)
                     print(
-                        f"adding {g.centers.shape}; num of modules already: {len(self.modules_list)}"
+                        f"add {g.centers.shape}; num of modules already: {len(self.modules_list)}"
                     )
                     # print(f"to dimensions: {set(range(len(sets))) - set(empty_sets)}")
                     self.modules_list.add_module(str(new_idx), g)
