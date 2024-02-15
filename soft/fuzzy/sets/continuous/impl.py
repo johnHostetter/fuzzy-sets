@@ -242,24 +242,24 @@ class GroupedFuzzySets(torch.nn.Module):
 
                 all_data = torch.vstack(self.data_seen)
                 exemplars = torch.vstack(
-                    (
-                        all_data.min(dim=0).values, 
-                        all_data.max(dim=0).values
-                    )
+                    (all_data.min(dim=0).values, all_data.max(dim=0).values)
                 )
-                
+
                 import numpy as np
                 from scipy.signal import find_peaks
+
                 def evenly_spaced_exemplars(data, n):
                     peaks, _ = find_peaks(data)
                     if len(peaks) <= n:
                         return peaks
 
-                    sampled_peaks_indices = np.linspace(0, len(peaks) - 1, n).astype(int)
+                    sampled_peaks_indices = np.linspace(0, len(peaks) - 1, n).astype(
+                        int
+                    )
                     sampled_peaks = peaks[sampled_peaks_indices]
                     exemplars = data[sampled_peaks]
                     return exemplars[:, None]
-                
+
                 all_exemplars = []
                 for var_idx in range(all_data.shape[-1]):
                     all_exemplars.append(
@@ -270,13 +270,11 @@ class GroupedFuzzySets(torch.nn.Module):
                 mus = self.calculate_module_responses(exemplars).degrees
 
                 # Create a new matrix with nan values
-                new_centers = torch.full_like(exemplars, float('nan'))
+                new_centers = torch.full_like(exemplars, float("nan"))
 
                 # Use torch.where to update values that satisfy the condition
                 new_centers = torch.where(
-                    mus.max(
-                        dim=-1
-                    ).values < self.epsilon, exemplars, new_centers
+                    mus.max(dim=-1).values < self.epsilon, exemplars, new_centers
                 )
 
                 # print("checking")
@@ -290,7 +288,7 @@ class GroupedFuzzySets(torch.nn.Module):
                     #     degrees=module_responses,
                     #     mask=module_masks,
                     # )
-            
+
                     print("adding new centers")
 
                     terms: List[Dict[str, float]] = find_centers_and_widths(
@@ -348,7 +346,9 @@ class GroupedFuzzySets(torch.nn.Module):
                         .transpose(0, 1)
                         .max(dim=-1, keepdim=True)
                         .values,
-                        widths=new_widths.transpose(0, 1).max(dim=-1, keepdim=True).values,
+                        widths=new_widths.transpose(0, 1)
+                        .max(dim=-1, keepdim=True)
+                        .values,
                     )
                     new_idx = len(self.modules_list)
                     print(
@@ -366,8 +366,12 @@ class GroupedFuzzySets(torch.nn.Module):
                         centers, widths = [], []
                         for module in self.modules_list[1:]:
                             if module.centers.shape[-1] > 1:
-                                centers.append(module.centers.mean(dim=-1, keepdim=True))
-                                widths.append(module.widths.max(dim=-1, keepdim=True).values)
+                                centers.append(
+                                    module.centers.mean(dim=-1, keepdim=True)
+                                )
+                                widths.append(
+                                    module.widths.max(dim=-1, keepdim=True).values
+                                )
                             else:
                                 centers.append(module.centers)
                                 widths.append(module.widths)
@@ -376,7 +380,9 @@ class GroupedFuzzySets(torch.nn.Module):
                             widths=torch.cat(widths, dim=-1),
                         )
                         print(module.centers.shape)
-                        self.modules_list = torch.nn.ModuleList([self.modules_list[0], module])
+                        self.modules_list = torch.nn.ModuleList(
+                            [self.modules_list[0], module]
+                        )
 
             (
                 module_elements,
