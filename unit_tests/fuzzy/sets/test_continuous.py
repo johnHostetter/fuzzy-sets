@@ -32,7 +32,7 @@ def gaussian_numpy(element: torch.Tensor, center: np.ndarray, sigma: np.ndarray)
     Returns:
         The membership degree of 'element'.
     """
-    return np.exp(-1.0 * (np.power(element - center, 2) / (2 * np.power(sigma, 2))))
+    return np.exp(-1.0 * (np.power(element - center, 2) / (1.0 * np.power(sigma, 2))))
 
 
 def triangular_numpy(element: torch.Tensor, center: np.ndarray, width: np.ndarray):
@@ -256,7 +256,7 @@ class TestGaussian(unittest.TestCase):
         )
 
         expected_areas = torch.tensor(
-            [0.84921795, 1.3146162, 0.15140639, 0.2259366, 0.52607703]
+            [0.7412324, 1.1474512, 0.13215375, 0.1972067, 0.45918167]
         )
         assert torch.allclose(gaussian_mf.area(), expected_areas)
 
@@ -382,10 +382,10 @@ class TestGaussian(unittest.TestCase):
         element = np.array([[0.0001712, 0.00393354, -0.03641258, -0.01936134]])
         target_membership_degrees = torch.tensor(
             [
-                [0.99991935, 0.6570722, 0.4938028, 0.10771921],
-                [0.9999607, 0.6512912, 0.51118994, 0.02758226],
-                [0.00170295, 0.97853655, 0.75678015, 0.35368997],
-                [0.08427237, 0.99973786, 0.6627079, 0.08669658],
+                [9.9984e-01, 4.3174e-01, 2.4384e-01, 1.1603e-02],
+                [9.9992e-01, 4.2418e-01, 2.6132e-01, 7.6078e-04],
+                [2.9000e-06, 9.5753e-01, 5.7272e-01, 1.2510e-01],
+                [7.1018e-03, 9.9948e-01, 4.3918e-01, 7.5163e-03],
             ]
         )
         centers = torch.tensor(

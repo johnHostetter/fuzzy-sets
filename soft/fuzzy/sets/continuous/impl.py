@@ -38,14 +38,14 @@ class GroupedFuzzySets(torch.nn.Module):
             modules_list = []
         self.modules_list = torch.nn.ModuleList(modules_list)
         self.expandable = expandable
-        self.epsilon = 0.25  # epsilon-completeness
+        self.epsilon = 0.1  # epsilon-completeness
         # keep track of minimums and maximums if for fuzzy set width calculation
         self.minimums: Union[None, torch.Tensor] = None
         self.maximums: Union[None, torch.Tensor] = None
         # store data that we have seen to later add new fuzzy sets
         self.data_seen: Union[None, List[torch.Tensor]] = None
         # after we see this many data points, we will update the fuzzy sets
-        self.data_limit_until_update: int = 256
+        self.data_limit_until_update: int = 64
 
     def __getattribute__(self, item):
         try:
@@ -214,29 +214,13 @@ class GroupedFuzzySets(torch.nn.Module):
         ) = self.calculate_module_responses(observations)
 
         if self.expandable and self.training:
-            # find where the new centers should be added, if any
+            # save the data that we have seen
+            if self.data_seen is None:
+                self.data_seen = [observations]
+            else:
+                self.data_seen.append(observations)
 
-            tmp_module_responses = module_responses.clone()
-            # if LogGaussian was used, then use the following to check for real membership degrees:
-            if any([isinstance(module, LogGaussian) for module in self.modules_list]):
-                tmp_module_responses = tmp_module_responses.exp()
-
-            # Create a new matrix with nan values
-            new_centers = torch.full_like(observations, float('nan'))
-
-            # Use torch.where to update values that satisfy the condition
-            new_centers = torch.where(
-                tmp_module_responses.max(dim=-1).values < self.epsilon, observations, new_centers
-            )
-
-            if new_centers.isnan().all():
-                # no new centers needed
-                return Membership(
-                    elements=observations,
-                    degrees=module_responses,
-                    mask=module_masks,
-                )
-
+            # keep a running tally of mins and maxs of the domain
             minimums = observations.min(dim=0).values
             maximums = observations.max(dim=0).values
             if self.minimums is None:
@@ -248,87 +232,151 @@ class GroupedFuzzySets(torch.nn.Module):
             else:
                 self.maximums = torch.max(self.maximums, maximums)
 
-            terms: List[Dict[str, float]] = find_centers_and_widths(
-                data_point=new_centers.nan_to_num(0).mean(dim=0),
-                minimums=self.minimums,
-                maximums=self.maximums,
-                alpha=0.2,
-            )
+            if len(self.data_seen) % self.data_limit_until_update == 0:
+                # find where the new centers should be added, if any
+                tmp_module_responses = module_responses.clone()
+                # if LogGaussian was used, then use the following to check for real membership degrees:
+                if any([type(module) == LogGaussian for module in self.modules_list]):
+                    tmp_module_responses = tmp_module_responses.exp()
+                    assert tmp_module_responses.max().item() <= 1.0
 
-            new_widths = torch.Tensor([term["widths"].item() for term in terms])
-
-            assert new_widths.isnan().any() == False
-
-            # create the widths for the new centers
-            new_widths = (
-                # only keep the widths for the entries that are not torch.nan
-                ~torch.isnan(new_centers)
-                * new_widths.to(new_centers.device)
-            ) + (torch.isnan(new_centers) * -1)
-
-            # the above result is a tensor that contains the new centers, but also contains torch.nan
-            # in the places where a new center is not needed
-
-            # # print(mu.max(dim=-1).values, observations)
-            # nc: List[torch.Tensor] = [
-            #     torch.tensor(
-            #         list(
-            #             set(
-            #                 new_centers[:, var_idx][
-            #                     ~new_centers[:, var_idx].isnan()
-            #                 ].tolist()
-            #             )
-            #         )
-            #     )
-            #     for var_idx in range(new_centers.shape[-1])
-            # ]
-
-            # # doing some trick w. dynamically expandable networks
-            # sets: List[Any] = []  # 'Any' as in *any* child/impl. of ContinuousFuzzySet
-            # empty_sets: List[int] = []
-            # for idx, n in enumerate(nc):
-            #     if len(n) == 0:
-            #         empty_sets.append(idx)
-            #     sets.append(
-            #         Gaussian(
-            #             centers=n,
-            #             widths=torch.randn_like(n).abs(),
-            #         )
-            #     )
-            # if len(sets) > 0 and len(empty_sets) < len(sets):
-            #     # take the fuzzy sets, and make a ContinuousFuzzySet efficient object
-            #     g = ContinuousFuzzySet.stack(sets)
-            g = LogGaussian(
-                centers=new_centers.nan_to_num(0.0)
-                .transpose(0, 1)
-                .max(dim=-1, keepdim=True)
-                .values,
-                widths=new_widths.transpose(0, 1).max(dim=-1, keepdim=True).values,
-            )
-            new_idx = len(self.modules_list)
-            print(
-                f"adding {g.centers.shape}; num of modules already: {len(self.modules_list)}"
-            )
-            # print(f"to dimensions: {set(range(len(sets))) - set(empty_sets)}")
-            self.modules_list.add_module(str(new_idx), g)
-
-            # reduce the number of torch.nn.Modules in the list for computational efficiency
-            # (this is not necessary, but it is a good idea)
-            if len(self.modules_list) > 5:
-                centers, widths = [], []
-                for module in self.modules_list[1:]:
-                    if module.centers.shape[-1] > 1:
-                        centers.append(module.centers.max(dim=-1, keepdim=True).values)
-                        widths.append(module.widths.max(dim=-1, keepdim=True).values)
-                    else:
-                        centers.append(module.centers)
-                        widths.append(module.widths)
-                module = LogGaussian(
-                    centers=torch.cat(centers, dim=-1),
-                    widths=torch.cat(widths, dim=-1),
+                all_data = torch.vstack(self.data_seen)
+                exemplars = torch.vstack(
+                    (
+                        all_data.min(dim=0).values, 
+                        all_data.max(dim=0).values
+                    )
                 )
-                print(module.centers.shape)
-                self.modules_list = torch.nn.ModuleList([self.modules_list[0], module])
+                
+                import numpy as np
+                from scipy.signal import find_peaks
+                def evenly_spaced_exemplars(data, n):
+                    peaks, _ = find_peaks(data)
+                    if len(peaks) <= n:
+                        return peaks
+
+                    sampled_peaks_indices = np.linspace(0, len(peaks) - 1, n).astype(int)
+                    sampled_peaks = peaks[sampled_peaks_indices]
+                    exemplars = data[sampled_peaks]
+                    return exemplars[:, None]
+                
+                all_exemplars = []
+                for var_idx in range(all_data.shape[-1]):
+                    all_exemplars.append(
+                        evenly_spaced_exemplars(all_data[:, var_idx].cpu(), 3)
+                    )
+
+                exemplars = torch.hstack(all_exemplars)
+                mus = self.calculate_module_responses(exemplars).degrees
+
+                # Create a new matrix with nan values
+                new_centers = torch.full_like(exemplars, float('nan'))
+
+                # Use torch.where to update values that satisfy the condition
+                new_centers = torch.where(
+                    mus.max(
+                        dim=-1
+                    ).values < self.epsilon, exemplars, new_centers
+                )
+
+                # print("checking")
+
+                if not new_centers.isnan().all():
+                    # # print("nope", tmp_module_responses.max(dim=-1).values)
+                    # # no new centers needed
+                    # print("return mus")
+                    # return Membership(
+                    #     elements=observations,
+                    #     degrees=module_responses,
+                    #     mask=module_masks,
+                    # )
+            
+                    print("adding new centers")
+
+                    terms: List[Dict[str, float]] = find_centers_and_widths(
+                        data_point=new_centers.nan_to_num(0).mean(dim=0),
+                        minimums=self.minimums,
+                        maximums=self.maximums,
+                        alpha=0.3,
+                    )
+
+                    new_widths = torch.Tensor([term["widths"].item() for term in terms])
+
+                    assert new_widths.isnan().any() == False
+
+                    # create the widths for the new centers
+                    new_widths = (
+                        # only keep the widths for the entries that are not torch.nan
+                        ~torch.isnan(new_centers)
+                        * new_widths
+                    ) + (torch.isnan(new_centers) * -1)
+
+                    # the above result is a tensor that contains the new centers, but also contains torch.nan
+                    # in the places where a new center is not needed
+
+                    # # print(mu.max(dim=-1).values, observations)
+                    # nc: List[torch.Tensor] = [
+                    #     torch.tensor(
+                    #         list(
+                    #             set(
+                    #                 new_centers[:, var_idx][
+                    #                     ~new_centers[:, var_idx].isnan()
+                    #                 ].tolist()
+                    #             )
+                    #         )
+                    #     )
+                    #     for var_idx in range(new_centers.shape[-1])
+                    # ]
+
+                    # # doing some trick w. dynamically expandable networks
+                    # sets: List[Any] = []  # 'Any' as in *any* child/impl. of ContinuousFuzzySet
+                    # empty_sets: List[int] = []
+                    # for idx, n in enumerate(nc):
+                    #     if len(n) == 0:
+                    #         empty_sets.append(idx)
+                    #     sets.append(
+                    #         Gaussian(
+                    #             centers=n,
+                    #             widths=torch.randn_like(n).abs(),
+                    #         )
+                    #     )
+                    # if len(sets) > 0 and len(empty_sets) < len(sets):
+                    #     # take the fuzzy sets, and make a ContinuousFuzzySet efficient object
+                    #     g = ContinuousFuzzySet.stack(sets)
+                    g = type(self.modules_list[0])(
+                        centers=new_centers.nan_to_num(0.0)
+                        .transpose(0, 1)
+                        .max(dim=-1, keepdim=True)
+                        .values,
+                        widths=new_widths.transpose(0, 1).max(dim=-1, keepdim=True).values,
+                    )
+                    new_idx = len(self.modules_list)
+                    print(
+                        f"adding {g.centers.shape}; num of modules already: {len(self.modules_list)}"
+                    )
+                    # print(f"to dimensions: {set(range(len(sets))) - set(empty_sets)}")
+                    self.modules_list.add_module(str(new_idx), g)
+
+                    # clear the history
+                    self.data_seen = None
+
+                    # reduce the number of torch.nn.Modules in the list for computational efficiency
+                    # (this is not necessary, but it is a good idea)
+                    if False and len(self.modules_list) > 5:
+                        centers, widths = [], []
+                        for module in self.modules_list[1:]:
+                            if module.centers.shape[-1] > 1:
+                                centers.append(module.centers.mean(dim=-1, keepdim=True))
+                                widths.append(module.widths.max(dim=-1, keepdim=True).values)
+                            else:
+                                centers.append(module.centers)
+                                widths.append(module.widths)
+                        module = type(self.modules_list[0])(
+                            centers=torch.cat(centers, dim=-1),
+                            widths=torch.cat(widths, dim=-1),
+                        )
+                        print(module.centers.shape)
+                        self.modules_list = torch.nn.ModuleList([self.modules_list[0], module])
 
             (
                 module_elements,
@@ -352,9 +400,12 @@ class LogGaussian(ContinuousFuzzySet):
         self,
         centers=None,
         widths=None,
+        width_multiplier: float = 1.0,  # in fuzzy logic, convention is usually 1.0, but can be 2.0
         labels: List[str] = None,
     ):
         super().__init__(centers=centers, widths=widths, labels=labels)
+        self.width_multiplier = width_multiplier
+        assert int(self.width_multiplier) in [1, 2]
 
     @property
     def sigmas(self) -> torch.Tensor:
@@ -472,7 +523,7 @@ class LogGaussian(ContinuousFuzzySet):
                     observations - self.centers,
                     2,
                 )
-                / (2 * torch.pow(self.widths, 2) + 1e-32)
+                / (self.width_multiplier * torch.pow(self.widths, 2) + 1e-32)
             )
         ) * self.mask.to(observations.device)
         # .unsqueeze(dim=0)
