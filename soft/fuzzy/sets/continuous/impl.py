@@ -340,15 +340,22 @@ class GroupedFuzzySets(torch.nn.Module):
                     # if len(sets) > 0 and len(empty_sets) < len(sets):
                     #     # take the fuzzy sets, and make a ContinuousFuzzySet efficient object
                     #     g = ContinuousFuzzySet.stack(sets)
-                    g = type(self.modules_list[0])(
-                        centers=new_centers.nan_to_num(0.0)
-                        .transpose(0, 1)
-                        .max(dim=-1, keepdim=True)
-                        .values,
-                        widths=new_widths.transpose(0, 1)
-                        .max(dim=-1, keepdim=True)
-                        .values,
-                    )
+                    module_type = type(self.modules_list[0])
+                    if module_type is ContinuousFuzzySet:
+                        g = type(self.modules_list[0])(
+                            centers=new_centers.nan_to_num(0.0)
+                            .transpose(0, 1)
+                            .max(dim=-1, keepdim=True)
+                            .values,
+                            widths=new_widths.transpose(0, 1)
+                            .max(dim=-1, keepdim=True)
+                            .values,
+                        )
+                    else:
+                        raise ValueError(
+                            "The module type is not ContinuousFuzzySet, and therefore cannot "
+                            "be used for dynamic expansion."
+                        )
                     new_idx = len(self.modules_list)
                     print(
                         f"add {g.centers.shape}; num of modules already: {len(self.modules_list)}"
@@ -554,6 +561,9 @@ class LogGaussian(ContinuousFuzzySet):
 
 
 class Gaussian(LogGaussian):
+    """
+    Implementation of the Gaussian membership function, written in PyTorch.
+    """
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
         return super().calculate_membership(observations).exp() * self.mask.to(
             observations.device
