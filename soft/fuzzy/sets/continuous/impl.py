@@ -342,7 +342,7 @@ class GroupedFuzzySets(torch.nn.Module):
                     #     g = ContinuousFuzzySet.stack(sets)
                     module_type = type(self.modules_list[0])
                     if module_type is ContinuousFuzzySet:
-                        g = type(self.modules_list[0])(
+                        g = module_type(
                             centers=new_centers.nan_to_num(0.0)
                             .transpose(0, 1)
                             .max(dim=-1, keepdim=True)

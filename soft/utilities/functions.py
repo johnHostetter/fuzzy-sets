@@ -105,6 +105,9 @@ def convert_to_tensor(values: np.ndarray) -> torch.Tensor:
 
 
 def get_object_attributes(obj_instance) -> Dict[str, Any]:
+    """
+    Get the attributes of an object instance.
+    """
     # get the attributes that are local to the class, but may be inherited from the super class
     local_attributes = inspect.getmembers(
         obj_instance,
@@ -124,35 +127,49 @@ def get_object_attributes(obj_instance) -> Dict[str, Any]:
 
 
 class GaussianDropout(torch.nn.Module):
-    def __init__(self, p=0.5):
-        super(GaussianDropout, self).__init__()
-        if p <= 0 or p >= 1:
-            raise Exception("p value should accomplish 0 < p < 1")
-        self.p = p
+    """
+    Gaussian Dropout as defined in the paper "Gaussian Dropout" by Srivastava et al. (2014).
 
-    def forward(self, x):
+    Similar to:
+        https://keras.io/api/layers/regularization_layers/gaussian_dropout/
+    """
+    def __init__(self, probability=0.5):
+        """
+        Initialize the Gaussian Dropout layer.
+        """
+        super().__init__()
+        if probability <= 0 or probability >= 1:
+            raise ValueError("Probability value, p, should accomplish 0 < p < 1")
+        self.probability = probability
+
+    def forward(self, tensor: torch.Tensor):
+        """
+        Apply Gaussian Dropout to the input tensor.
+        """
         if self.training:
-            standard_deviation = (self.p / (1.0 - self.p)) ** 0.5
-            epsilon = torch.rand_like(x) * standard_deviation
-            return x * epsilon
-        else:
-            return x
+            standard_deviation = (self.probability / (1.0 - self.probability)) ** 0.5
+            epsilon = torch.rand_like(tensor) * standard_deviation
+            return tensor * epsilon
+        return tensor
 
 
-def raw_dropout(x, p):
+def raw_dropout(tensor: torch.Tensor, probability):
+    """
+    Apply raw dropout to the input tensor.
+    """
     # generate a binary mask based on the dropout probability
-    s = list(x.shape)
-    s[-1] = 2
+    shape: list = list(tensor.shape)
+    shape[-1] = 2
 
-    weights = torch.empty(s, dtype=torch.float)
-    weights[:, :, 0] = p
-    weights[:, :, 1] = 1 - p
+    weights = torch.empty(shape, dtype=torch.float)
+    weights[:, :, 0] = probability
+    weights[:, :, 1] = 1 - probability
     mask = torch.multinomial(
         weights.view(-1, 2),
-        num_samples=x.shape[-1],
+        num_samples=tensor.shape[-1],
         replacement=True,
-    ).view(x.shape)
+    ).view(tensor.shape)
 
     # apply the mask to the input tensor
-    return x * mask  # my defn, weight balancing
-    # return (x * mask) / (1 - p)
+    return tensor * mask  # my defn, weight balancing
+    # return (tensor * mask) / (1 - probability)

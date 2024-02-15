@@ -109,6 +109,12 @@ def parse_configuration(config: Config, reverse=False) -> Config:
     with config.unfreeze():
         config.training.learning_rate = float(config.training.learning_rate)
         if reverse:
+            values_to_str = {
+                # np.e: "euler",
+                # (1 + 5**0.5) / 2: "golden",
+                AlgebraicProduct: "algebraic_product",
+                Minimum: "minimum",
+            }
             if isinstance(config.fuzzy.t_norm.yager, float):
                 if np.isclose(config.fuzzy.t_norm.yager, np.e):
                     w_parameter = "euler"
@@ -120,26 +126,27 @@ def parse_configuration(config: Config, reverse=False) -> Config:
                 w_parameter = config.fuzzy.t_norm.yager
             config.fuzzy.t_norm.yager = w_parameter
 
-            if config.fuzzy.inference.t_norm == AlgebraicProduct:
-                config.fuzzy.inference.t_norm = "algebraic_product"
-            elif config.fuzzy.inference.t_norm == Minimum:
-                config.fuzzy.inference.t_norm = "minimum"
+            if config.fuzzy.inference.t_norm in values_to_str:
+                config.fuzzy.inference.t_norm = values_to_str[config.fuzzy.inference.t_norm]
         else:
-            if isinstance(config.fuzzy.t_norm.yager, str):
-                if config.fuzzy.t_norm.yager.lower() == "euler":
-                    w_parameter = np.e
-                elif config.fuzzy.t_norm.yager.lower() == "golden":
-                    w_parameter = (1 + 5**0.5) / 2
-                else:
-                    w_parameter = config.fuzzy.t_norm.yager
+            # map string values to their true values
+            str_to_values = {
+                "euler": np.e,
+                "golden": (1 + 5**0.5) / 2,
+                "algebraic_product": AlgebraicProduct,
+                "minimum": Minimum,
+            }
+            if (
+                    isinstance(config.fuzzy.t_norm.yager, str) and
+                    config.fuzzy.t_norm.yager.lower() in str_to_values
+            ):
+                w_parameter: float = str_to_values[config.fuzzy.t_norm.yager.lower()]
             else:
-                w_parameter = float(config.fuzzy.t_norm.yager)
+                w_parameter: float = float(config.fuzzy.t_norm.yager)
             config.fuzzy.t_norm.yager = w_parameter
 
-            if config.fuzzy.inference.t_norm == "algebraic_product":
-                config.fuzzy.inference.t_norm = AlgebraicProduct
-            elif config.fuzzy.inference.t_norm == "minimum":
-                config.fuzzy.inference.t_norm = Minimum
+            if config.fuzzy.inference.t_norm in str_to_values:
+                config.fuzzy.inference.t_norm = str_to_values[config.fuzzy.inference.t_norm]
 
     return config
 
