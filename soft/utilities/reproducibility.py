@@ -127,7 +127,9 @@ def parse_configuration(config: Config, reverse=False) -> Config:
             config.fuzzy.t_norm.yager = w_parameter
 
             if config.fuzzy.inference.t_norm in values_to_str:
-                config.fuzzy.inference.t_norm = values_to_str[config.fuzzy.inference.t_norm]
+                config.fuzzy.inference.t_norm = values_to_str[
+                    config.fuzzy.inference.t_norm
+                ]
         else:
             # map string values to their true values
             str_to_values = {
@@ -137,8 +139,8 @@ def parse_configuration(config: Config, reverse=False) -> Config:
                 "minimum": Minimum,
             }
             if (
-                    isinstance(config.fuzzy.t_norm.yager, str) and
-                    config.fuzzy.t_norm.yager.lower() in str_to_values
+                isinstance(config.fuzzy.t_norm.yager, str)
+                and config.fuzzy.t_norm.yager.lower() in str_to_values
             ):
                 w_parameter: float = str_to_values[config.fuzzy.t_norm.yager.lower()]
             else:
@@ -146,7 +148,9 @@ def parse_configuration(config: Config, reverse=False) -> Config:
             config.fuzzy.t_norm.yager = w_parameter
 
             if config.fuzzy.inference.t_norm in str_to_values:
-                config.fuzzy.inference.t_norm = str_to_values[config.fuzzy.inference.t_norm]
+                config.fuzzy.inference.t_norm = str_to_values[
+                    config.fuzzy.inference.t_norm
+                ]
 
     return config
 

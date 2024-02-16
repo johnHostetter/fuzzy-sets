@@ -133,6 +133,7 @@ class GaussianDropout(torch.nn.Module):
     Similar to:
         https://keras.io/api/layers/regularization_layers/gaussian_dropout/
     """
+
     def __init__(self, probability=0.5):
         """
         Initialize the Gaussian Dropout layer.

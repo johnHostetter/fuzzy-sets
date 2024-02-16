@@ -4,7 +4,7 @@ Implements various membership functions by inheriting from ContinuousFuzzySet.
 import pickle
 import inspect
 from pathlib import Path
-from typing import List, NoReturn, Union, Tuple, Any, Dict, Set
+from typing import List, NoReturn, Union, Tuple, Any, Dict, Set, Type
 
 import torch
 import numpy as np
@@ -40,14 +40,17 @@ class GroupedFuzzySets(torch.nn.Module):
             modules_list = []
         self.modules_list = torch.nn.ModuleList(modules_list)
         self.expandable = expandable
+        self.pruning = False
         self.epsilon = 0.1  # epsilon-completeness
         # keep track of minimums and maximums if for fuzzy set width calculation
-        self.minimums: Union[None, torch.Tensor] = None
-        self.maximums: Union[None, torch.Tensor] = None
+        self.domain: Dict[str, Union[None, torch.Tensor]] = {
+            "minimums": None,
+            "maximums": None,
+        }
         # store data that we have seen to later add new fuzzy sets
-        self.data_seen: Union[None, List[torch.Tensor]] = None
+        self.data_seen: List[torch.Tensor] = []
         # after we see this many data points, we will update the fuzzy sets
-        self.data_limit_until_update: int = 64
+        self.data_limit_until_update: int = 1
 
     def __getattribute__(self, item):
         try:
@@ -186,6 +189,9 @@ class GroupedFuzzySets(torch.nn.Module):
     def calculate_module_responses(
         self, observations
     ) -> Union[Tuple[torch.Tensor, torch.Tensor], NoReturn]:
+        """
+        Calculate the responses from the modules in the torch.nn.ModuleList of GroupedFuzzySets.
+        """
         if len(self.modules_list) > 0:
             # modules' responses are membership degrees when modules are ContinuousFuzzySet
             module_elements: List[torch.Tensor] = []
@@ -207,99 +213,82 @@ class GroupedFuzzySets(torch.nn.Module):
             )
         raise ValueError("The torch.nn.ModuleList of GroupedFuzzySets is empty.")
 
-    def forward(self, observations) -> Membership:
-        observations = convert_to_tensor(observations)
-        (
-            module_elements,
-            module_responses,
-            module_masks,
-        ) = self.calculate_module_responses(observations)
-
+    def expand(
+        self, observations, module_responses, module_masks
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Expand the GroupedFuzzySets if necessary.
+        """
         if self.expandable and self.training:
             # save the data that we have seen
-            if self.data_seen is None:
-                self.data_seen = [observations]
-            else:
-                self.data_seen.append(observations)
+            self.data_seen.append(observations)
 
             # keep a running tally of mins and maxs of the domain
             minimums = observations.min(dim=0).values
             maximums = observations.max(dim=0).values
-            if self.minimums is None:
-                self.minimums = minimums
+            if self.domain["minimums"] is None:
+                self.domain["minimums"] = minimums
             else:
-                self.minimums = torch.min(self.minimums, minimums)
-            if self.maximums is None:
-                self.maximums = maximums
+                self.domain["minimums"] = torch.min(self.domain["minimums"], minimums)
+            if self.domain["maximums"] is None:
+                self.domain["maximums"] = maximums
             else:
-                self.maximums = torch.max(self.maximums, maximums)
+                self.domain["maximums"] = torch.max(self.domain["maximums"], maximums)
 
             if len(self.data_seen) % self.data_limit_until_update == 0:
                 # find where the new centers should be added, if any
                 tmp_module_responses = module_responses.clone()
                 # if LogGaussian was used, then use following to check for real membership degrees:
-                if any([type(module) == LogGaussian for module in self.modules_list]):
+                if any(isinstance(module, LogGaussian) for module in self.modules_list):
                     tmp_module_responses = tmp_module_responses.exp()
                     assert tmp_module_responses.max().item() <= 1.0
 
                 all_data = torch.vstack(self.data_seen)
-                exemplars = torch.vstack(
-                    (all_data.min(dim=0).values, all_data.max(dim=0).values)
-                )
 
-                def evenly_spaced_exemplars(data, n):
+                def evenly_spaced_exemplars(data, max_peaks):
                     peaks, _ = find_peaks(data)
-                    if len(peaks) <= n:
+                    if len(peaks) <= max_peaks:
                         return peaks
 
-                    sampled_peaks_indices = np.linspace(0, len(peaks) - 1, n).astype(
-                        int
-                    )
+                    sampled_peaks_indices = np.linspace(
+                        0, len(peaks) - 1, max_peaks
+                    ).astype(int)
                     sampled_peaks = peaks[sampled_peaks_indices]
                     exemplars = data[sampled_peaks]
                     return exemplars[:, None]
 
-                all_exemplars = []
+                exemplars: List[torch.Tensor] = []
                 for var_idx in range(all_data.shape[-1]):
-                    all_exemplars.append(
+                    exemplars.append(
                         evenly_spaced_exemplars(all_data[:, var_idx].cpu(), 3)
                     )
 
-                exemplars = torch.hstack(all_exemplars)
-                mus = self.calculate_module_responses(exemplars).degrees
+                exemplars: torch.Tensor = torch.hstack(exemplars)
 
                 # Create a new matrix with nan values
                 new_centers = torch.full_like(exemplars, float("nan"))
 
                 # Use torch.where to update values that satisfy the condition
                 new_centers = torch.where(
-                    mus.max(dim=-1).values < self.epsilon, exemplars, new_centers
+                    self.calculate_module_responses(exemplars)
+                    .degrees.max(dim=-1)
+                    .values
+                    < self.epsilon,
+                    exemplars,
+                    new_centers,
                 )
 
-                # print("checking")
-
-                if not new_centers.isnan().all():
-                    # # print("nope", tmp_module_responses.max(dim=-1).values)
-                    # # no new centers needed
-                    # print("return mus")
-                    # return Membership(
-                    #     elements=observations,
-                    #     degrees=module_responses,
-                    #     mask=module_masks,
-                    # )
-
-                    print("adding new centers")
-
+                if not new_centers.isnan().all():  # add new centers
                     terms: List[Dict[str, float]] = find_centers_and_widths(
                         data_point=new_centers.nan_to_num(0).mean(dim=0),
-                        minimums=self.minimums,
-                        maximums=self.maximums,
+                        minimums=self.domain["minimums"],
+                        maximums=self.domain["maximums"],
                         alpha=0.3,
                     )
 
                     new_widths = torch.Tensor([term["widths"].item() for term in terms])
 
-                    assert new_widths.isnan().any() is False
+                    # assert new_widths.isnan().any() is False
 
                     # create the widths for the new centers
                     new_widths = (
@@ -311,38 +300,9 @@ class GroupedFuzzySets(torch.nn.Module):
                     # above result is tensor that contains new centers, but also contains torch.nan
                     # in the places where a new center is not needed
 
-                    # # print(mu.max(dim=-1).values, observations)
-                    # nc: List[torch.Tensor] = [
-                    #     torch.tensor(
-                    #         list(
-                    #             set(
-                    #                 new_centers[:, var_idx][
-                    #                     ~new_centers[:, var_idx].isnan()
-                    #                 ].tolist()
-                    #             )
-                    #         )
-                    #     )
-                    #     for var_idx in range(new_centers.shape[-1])
-                    # ]
-
-                    # # doing some trick w. dynamically expandable networks
-                    # sets: List[Any] = []  # 'Any' as in *any* child/impl. of ContinuousFuzzySet
-                    # empty_sets: List[int] = []
-                    # for idx, n in enumerate(nc):
-                    #     if len(n) == 0:
-                    #         empty_sets.append(idx)
-                    #     sets.append(
-                    #         Gaussian(
-                    #             centers=n,
-                    #             widths=torch.randn_like(n).abs(),
-                    #         )
-                    #     )
-                    # if len(sets) > 0 and len(empty_sets) < len(sets):
-                    #     # take the fuzzy sets, and make a ContinuousFuzzySet efficient object
-                    #     g = ContinuousFuzzySet.stack(sets)
                     module_type = type(self.modules_list[0])
-                    if module_type is ContinuousFuzzySet:
-                        g = module_type(
+                    if issubclass(module_type, ContinuousFuzzySet):
+                        granule = ContinuousFuzzySet.get_subclass(module_type.__name__)(
                             centers=new_centers.nan_to_num(0.0)
                             .transpose(0, 1)
                             .max(dim=-1, keepdim=True)
@@ -356,45 +316,69 @@ class GroupedFuzzySets(torch.nn.Module):
                             "The module type is not ContinuousFuzzySet, and therefore cannot "
                             "be used for dynamic expansion."
                         )
-                    new_idx = len(self.modules_list)
                     print(
-                        f"add {g.centers.shape}; num of modules already: {len(self.modules_list)}"
+                        f"add {granule.centers.shape}; modules already: {len(self.modules_list)}"
                     )
                     # print(f"to dimensions: {set(range(len(sets))) - set(empty_sets)}")
-                    self.modules_list.add_module(str(new_idx), g)
+                    self.modules_list.add_module(str(len(self.modules_list)), granule)
 
                     # clear the history
-                    self.data_seen = None
+                    self.data_seen = []
 
                     # reduce the number of torch.nn.Modules in the list for computational efficiency
                     # (this is not necessary, but it is a good idea)
-                    if False and len(self.modules_list) > 5:
-                        centers, widths = [], []
-                        for module in self.modules_list[1:]:
-                            if module.centers.shape[-1] > 1:
-                                centers.append(
-                                    module.centers.mean(dim=-1, keepdim=True)
-                                )
-                                widths.append(
-                                    module.widths.max(dim=-1, keepdim=True).values
-                                )
-                            else:
-                                centers.append(module.centers)
-                                widths.append(module.widths)
-                        module = type(self.modules_list[0])(
-                            centers=torch.cat(centers, dim=-1),
-                            widths=torch.cat(widths, dim=-1),
-                        )
-                        print(module.centers.shape)
-                        self.modules_list = torch.nn.ModuleList(
-                            [self.modules_list[0], module]
-                        )
+                    self.prune(module_type)
 
             (
                 module_elements,
                 module_responses,
                 module_masks,
             ) = self.calculate_module_responses(observations)
+        else:
+            module_elements = observations
+        return module_elements, module_responses, module_masks
+
+    def prune(self, module_type: Type[ContinuousFuzzySet]) -> None:
+        """
+        Prune the torch.nn.ModuleList of GroupedFuzzySets by keeping the first module, but
+        collapsing the rest of the modules into a single module. This is done to reduce the
+        number of torch.nn.Modules in the list for computational efficiency.
+        """
+        if self.pruning and len(self.modules_list) > 5:
+            centers, widths = [], []
+            for module in self.modules_list[1:]:
+                if module.centers.shape[-1] > 1:
+                    centers.append(module.centers.mean(dim=-1, keepdim=True))
+                    widths.append(module.widths.max(dim=-1, keepdim=True).values)
+                else:
+                    centers.append(module.centers)
+                    widths.append(module.widths)
+            if issubclass(module_type, ContinuousFuzzySet):
+                module = ContinuousFuzzySet.get_subclass(module_type.__name__)(
+                    centers=torch.cat(centers, dim=-1),
+                    widths=torch.cat(widths, dim=-1),
+                )
+                print(module.centers.shape)
+            else:
+                raise ValueError(
+                    "The module type is not ContinuousFuzzySet, and therefore cannot "
+                    "be used for dynamic expansion."
+                )
+            self.modules_list = torch.nn.ModuleList([self.modules_list[0], module])
+
+    def forward(self, observations) -> Membership:
+        """
+        Calculate the responses from the modules in the torch.nn.ModuleList of GroupedFuzzySets.
+        Expand the GroupedFuzzySets if necessary.
+        """
+        observations = convert_to_tensor(observations)
+        (
+            _,  # module_elements
+            module_responses,
+            module_masks,
+        ) = self.calculate_module_responses(observations)
+
+        self.expand(observations, module_responses, module_masks)
 
         return Membership(
             elements=observations, degrees=module_responses, mask=module_masks
@@ -564,6 +548,7 @@ class Gaussian(LogGaussian):
     """
     Implementation of the Gaussian membership function, written in PyTorch.
     """
+
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
         return super().calculate_membership(observations).exp() * self.mask.to(
             observations.device
