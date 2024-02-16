@@ -226,42 +226,44 @@ class GroupedFuzzySets(torch.nn.Module):
             # keep a running tally of mins and maxs of the domain
             minimums = observations.min(dim=0).values
             maximums = observations.max(dim=0).values
-            if self.domain["minimums"] is None:
-                self.domain["minimums"] = minimums
-            else:
-                self.domain["minimums"] = torch.min(self.domain["minimums"], minimums)
-            if self.domain["maximums"] is None:
-                self.domain["maximums"] = maximums
-            else:
-                self.domain["maximums"] = torch.max(self.domain["maximums"], maximums)
+            self.domain["minimums"] = (
+                minimums
+                if self.domain["minimums"] is None
+                else torch.min(self.domain["minimums"], maximums)
+            )
+            self.domain["maximums"] = (
+                maximums
+                if self.domain["maximums"] is None
+                else torch.max(self.domain["maximums"], maximums)
+            )
 
             if len(self.data_seen) % self.data_limit_until_update == 0:
                 # find where the new centers should be added, if any
-                tmp_module_responses = module_responses.clone()
-                # if LogGaussian was used, then use following to check for real membership degrees:
-                if any(isinstance(module, LogGaussian) for module in self.modules_list):
-                    tmp_module_responses = tmp_module_responses.exp()
-                    assert tmp_module_responses.max().item() <= 1.0
+                # LogGaussian was used, then use following to check for real membership degrees:
+                for module in self.modules_list:
+                    if isinstance(module, LogGaussian) and not isinstance(
+                        module, Gaussian
+                    ):
+                        with torch.no_grad:
+                            assert (
+                                module_responses.exp() * module_masks
+                            ).max().item() <= 1.0
 
                 all_data = torch.vstack(self.data_seen)
-
-                def evenly_spaced_exemplars(data, max_peaks):
-                    peaks, _ = find_peaks(data)
-                    if len(peaks) <= max_peaks:
-                        return peaks
-
-                    sampled_peaks_indices = np.linspace(
-                        0, len(peaks) - 1, max_peaks
-                    ).astype(int)
-                    sampled_peaks = peaks[sampled_peaks_indices]
-                    exemplars = data[sampled_peaks]
-                    return exemplars[:, None]
-
                 exemplars: List[torch.Tensor] = []
+
                 for var_idx in range(all_data.shape[-1]):
                     exemplars.append(
-                        evenly_spaced_exemplars(all_data[:, var_idx].cpu(), 3)
+                        self.evenly_spaced_exemplars(all_data[:, var_idx].cpu(), 3)
                     )
+                    if len(exemplars[-1]) == 0:
+                        exemplars = (
+                            []
+                        )  # discard everything, no exemplars found in this dimension
+                        break  # stop the loop, no need to continue
+                if len(exemplars) == 0:
+                    # no exemplars found in any dimension
+                    return observations, module_responses, module_masks
 
                 exemplars: torch.Tensor = torch.hstack(exemplars)
 
@@ -330,13 +332,25 @@ class GroupedFuzzySets(torch.nn.Module):
                     self.prune(module_type)
 
             (
-                module_elements,
+                _,
                 module_responses,
                 module_masks,
             ) = self.calculate_module_responses(observations)
-        else:
-            module_elements = observations
-        return module_elements, module_responses, module_masks
+        return observations, module_responses, module_masks
+
+    @staticmethod
+    def evenly_spaced_exemplars(data, max_peaks):
+        """
+        Find the peaks in the data and return the peaks, or a subset of the peaks if there are
+        more than max_peaks.
+        """
+        peaks, _ = find_peaks(data)
+        if len(peaks) <= max_peaks:
+            return peaks
+
+        sampled_peaks_indices = np.linspace(0, len(peaks) - 1, max_peaks).astype(int)
+        sampled_peaks = peaks[sampled_peaks_indices]
+        return data[sampled_peaks][:, None]
 
     def prune(self, module_type: Type[ContinuousFuzzySet]) -> None:
         """
