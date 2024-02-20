@@ -7,7 +7,7 @@ import inspect
 from pathlib import Path
 from collections import namedtuple
 from abc import abstractmethod, ABC
-from typing import List, NoReturn, Union, MutableMapping, Any
+from typing import List, NoReturn, Union, MutableMapping, Any, Type
 
 import torch
 import torchquad
@@ -331,7 +331,7 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
             sets.append(type(self)(1, center.item(), width.item()))
         return np.array(sets).reshape(self.centers.shape)
 
-    def split_by_variables(self) -> List["ContinuousFuzzySet"]:
+    def split_by_variables(self) -> Union[list, List[Type["ContinuousFuzzySet"]]]:
         """
         This operation takes the ContinuousFuzzySet and converts it to a list of ContinuousFuzzySet
         objects, if applicable. For example, rather than using a single Gaussian object to represent
@@ -368,7 +368,7 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
         return variables
 
     @staticmethod
-    def count_granule_terms(granules: List["ContinuousFuzzySet"]) -> np.ndarray:
+    def count_granule_terms(granules: List[Type["ContinuousFuzzySet"]]) -> np.ndarray:
         """
         Count the number of granules that occur in each dimension.
 
@@ -387,7 +387,7 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
 
     @staticmethod
     def stack(
-        granules: List["ContinuousFuzzySet"],
+        granules: List[Type["ContinuousFuzzySet"]],
     ) -> "ContinuousFuzzySet":
         """
         Create a condensed and stacked representation of the given granules.
