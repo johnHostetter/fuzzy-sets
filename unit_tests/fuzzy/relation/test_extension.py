@@ -3,9 +3,9 @@ Test extensions of the BaseDiscreteFuzzySet, such as AlphaCut or SpecialFuzzySet
 """
 import unittest
 
-from soft.fuzzy.relation.snorm import StandardUnion
-from soft.fuzzy.relation.tnorm import StandardIntersection
-from soft.fuzzy.relation.extension import AlphaCut, SpecialFuzzySet
+from soft.fuzzy.relation.discrete.snorm import StandardUnion
+from soft.fuzzy.relation.discrete.tnorm import StandardIntersection
+from soft.fuzzy.relation.discrete.extension import AlphaCut, SpecialFuzzySet
 from examples.fuzzy.sets.discrete.student import known, learned
 
 

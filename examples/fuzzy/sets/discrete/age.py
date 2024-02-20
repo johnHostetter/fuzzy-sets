@@ -3,9 +3,9 @@ Demo of working with discrete fuzzy sets for a toy task regarding age.
 """
 from sympy import Symbol, Interval, oo  # oo is infinity
 
-from soft.fuzzy.relation.snorm import StandardUnion
-from soft.fuzzy.relation.tnorm import StandardIntersection
-from soft.fuzzy.relation.complement import standard_complement
+from soft.fuzzy.relation.discrete.snorm import StandardUnion
+from soft.fuzzy.relation.discrete.tnorm import StandardIntersection
+from soft.fuzzy.relation.discrete.complement import standard_complement
 from soft.fuzzy.sets.discrete import DiscreteFuzzySet, FuzzyVariable
 
 

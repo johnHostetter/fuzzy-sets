@@ -5,7 +5,7 @@ import unittest
 
 import torch
 
-from soft.fuzzy.relation.aggregation import OrderedWeightedAveraging as OWA
+from soft.fuzzy.relation.continuous.aggregation import OrderedWeightedAveraging as OWA
 
 
 class TestOrderedWeightedAggregation(unittest.TestCase):

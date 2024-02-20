@@ -6,7 +6,7 @@ import unittest
 import torch
 import numpy as np
 
-from soft.fuzzy.relation.tnorm import AlgebraicProduct
+from soft.fuzzy.relation.continuous.tnorm import AlgebraicProduct
 
 
 def algebraic_product(elements: np.ndarray, importance: np.ndarray) -> np.float32:
