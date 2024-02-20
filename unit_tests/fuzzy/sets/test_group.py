@@ -4,8 +4,9 @@ from pathlib import Path
 
 import torch
 
+from soft.fuzzy.sets.continuous.impl import Gaussian
+from soft.fuzzy.sets.continuous.group import GroupedFuzzySets
 from soft.utilities.functions import get_object_attributes
-from soft.fuzzy.sets.continuous.impl import GroupedFuzzySets, Gaussian
 
 
 class TestGroupedFuzzySets(unittest.TestCase):

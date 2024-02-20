@@ -39,7 +39,7 @@ def all_subclasses(cls) -> Set[Any]:
 
 
 def find_centers_and_widths(
-    data_point, minimums, maximums, alpha
+    data_point, minimums, maximums, alpha: float
 ) -> List[Dict[str, float]]:
     """
     Find the centers and widths to be used for a newly created fuzzy set.
@@ -58,29 +58,29 @@ def find_centers_and_widths(
     # The variable 'theta' is added to accommodate for the instance in which an observation has
     # values that are the minimum/maximum. Otherwise, when determining the Gaussian membership,
     # a division by zero will occur; it essentially acts as an error tolerance.
-    theta = 1e-8
-    parameters = []
+    theta: float = 1e-8
+    parameters: List[Dict[str, float]] = []
     for dim, attribute_value in enumerate(data_point):
-        left_width = torch.sqrt(
+        left_width: float = torch.sqrt(
             -1.0
             * (torch.pow((minimums[dim] - attribute_value) + theta, 2) / np.log(alpha))
-        )
-        right_width = torch.sqrt(
+        ).item()
+        right_width: float = torch.sqrt(
             -1.0
             * (torch.pow((maximums[dim] - attribute_value) + theta, 2) / np.log(alpha))
-        )
-        sigma_1p = regulator(left_width, right_width)
-        parameters.append({"centers": attribute_value, "widths": sigma_1p})
+        ).item()
+        aggregated_sigma: float = regulator(left_width, right_width)
+        parameters.append({"centers": attribute_value, "widths": aggregated_sigma})
     return parameters
 
 
-def regulator(sigma_1, sigma_2):
+def regulator(sigma_1: float, sigma_2: float) -> float:
     """
     Regulator function as defined in CLIP.
 
     Args:
-        sigma_1 (float): The left sigma/width.
-        sigma_2 (float): The right sigma/width.
+        sigma_1: The left sigma/width.
+        sigma_2: The right sigma/width.
 
     Returns:
         sigma (float): An adjusted sigma so that the produced
