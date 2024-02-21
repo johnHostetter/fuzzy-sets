@@ -250,7 +250,7 @@ class GroupedFuzzySets(torch.nn.Module):
                     if isinstance(module, LogGaussian) and not isinstance(
                         module, Gaussian
                     ):
-                        with torch.no_grad:
+                        with torch.no_grad():
                             assert (
                                 module_responses.exp() * module_masks
                             ).max().item() <= 1.0
@@ -260,7 +260,9 @@ class GroupedFuzzySets(torch.nn.Module):
 
                 for var_idx in range(all_data.shape[-1]):
                     exemplars.append(
-                        self.evenly_spaced_exemplars(all_data[:, var_idx].cpu(), 3)
+                        torch.Tensor(self.evenly_spaced_exemplars(
+                            all_data[:, var_idx].detach().cpu().numpy(), 3
+                        ))
                     )
                     if len(exemplars[-1]) == 0:
                         exemplars = (
@@ -345,10 +347,17 @@ class GroupedFuzzySets(torch.nn.Module):
         return observations, module_responses, module_masks
 
     @staticmethod
-    def evenly_spaced_exemplars(data, max_peaks):
+    def evenly_spaced_exemplars(data: np.ndarray, max_peaks: int) -> np.ndarray:
         """
         Find the peaks in the data and return the peaks, or a subset of the peaks if there are
         more than max_peaks.
+
+        Args:
+            data: The data to find the peaks in.
+            max_peaks: The maximum number of peaks to return.
+
+        Returns:
+            The peaks, or a subset of the peaks if there are more than max_peaks.
         """
         peaks, _ = find_peaks(data)
         if len(peaks) <= max_peaks:
