@@ -61,11 +61,13 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
         self,
         centers=None,
         widths=None,
+        use_sparse_tensor=False,
         labels: List[str] = None,
     ):
         super().__init__()
         self.centers = torch.nn.Parameter(convert_to_tensor(centers).float())
         self.widths = torch.nn.Parameter(convert_to_tensor(widths).float())
+        self.use_sparse_tensor = use_sparse_tensor
         self.mask = self.widths > 0.0
         self.labels = labels
 
@@ -490,13 +492,12 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
         observations: torch.Tensor = convert_to_tensor(observations).float()
         if observations.ndim <= self.centers.ndim:
             observations = observations.unsqueeze(dim=-1)
-        # degrees = self.calculate_membership(observations)
-        # mask = torch.zeros(degrees.shape[1:])
-        # return Membership(degrees, mask)
         if observations.get_device() == -1:  # CPU
             degrees: torch.Tensor = self.cpu().calculate_membership(observations)
         else:  # GPU
             degrees: torch.Tensor = self.cuda().calculate_membership(observations)
         return Membership(
-            elements=observations, degrees=degrees.to_sparse(), mask=self.mask
+            elements=observations,
+            degrees=degrees.to_sparse() if self.use_sparse_tensor else degrees,
+            mask=self.mask
         )
