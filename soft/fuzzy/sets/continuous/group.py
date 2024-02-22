@@ -260,9 +260,11 @@ class GroupedFuzzySets(torch.nn.Module):
 
                 for var_idx in range(all_data.shape[-1]):
                     exemplars.append(
-                        torch.Tensor(self.evenly_spaced_exemplars(
-                            all_data[:, var_idx].detach().cpu().numpy(), 3
-                        ))
+                        torch.Tensor(
+                            self.evenly_spaced_exemplars(
+                                all_data[:, var_idx].detach().cpu().numpy(), 3
+                            )
+                        )
                     )
                     if len(exemplars[-1]) == 0:
                         exemplars = (
