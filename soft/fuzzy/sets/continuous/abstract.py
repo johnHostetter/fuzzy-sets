@@ -497,4 +497,6 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
             degrees: torch.Tensor = self.cpu().calculate_membership(observations)
         else:  # GPU
             degrees: torch.Tensor = self.cuda().calculate_membership(observations)
-        return Membership(elements=observations, degrees=degrees, mask=self.mask)
+        return Membership(
+            elements=observations, degrees=degrees.to_sparse(), mask=self.mask
+        )
