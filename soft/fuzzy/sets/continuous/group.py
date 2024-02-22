@@ -6,6 +6,7 @@ Triangular, Trapezoidal, etc. Then, subsequent inference engines can handle thes
 defined fuzzy sets with no difficulty. Further, this class was specifically designed to incorporate
 dynamic addition of new fuzzy sets in the construction of neuro-fuzzy networks via network morphism.
 """
+
 import pickle
 import inspect
 from pathlib import Path
@@ -63,9 +64,9 @@ class GroupedFuzzySets(torch.nn.Module):
             if item in ("centers", "widths", "sigmas"):
                 modules_list = self.__dict__["_modules"]["modules_list"]
                 if len(modules_list) > 0:
-                    module_attributes: List[
-                        torch.Tensor
-                    ] = []  # the secondary response denoting module filter
+                    module_attributes: List[torch.Tensor] = (
+                        []
+                    )  # the secondary response denoting module filter
                     for module in modules_list:
                         module_attributes.append(getattr(module, item))
                     return torch.cat(module_attributes, dim=-1)
@@ -201,12 +202,12 @@ class GroupedFuzzySets(torch.nn.Module):
         if len(self.modules_list) > 0:
             # modules' responses are membership degrees when modules are ContinuousFuzzySet
             module_elements: List[torch.Tensor] = []
-            module_memberships: List[
-                torch.Tensor
-            ] = []  # the primary response from the module
-            module_masks: List[
-                torch.Tensor
-            ] = []  # the secondary response denoting module filter
+            module_memberships: List[torch.Tensor] = (
+                []
+            )  # the primary response from the module
+            module_masks: List[torch.Tensor] = (
+                []
+            )  # the secondary response denoting module filter
             for module in self.modules_list:
                 membership: Membership = module(observations)
                 module_elements.append(membership.elements.cpu())

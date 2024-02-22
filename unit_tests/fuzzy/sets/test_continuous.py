@@ -3,6 +3,7 @@ Test that various continuous fuzzy set implementations are working as intended, 
 Gaussian fuzzy set (i.e., membership function), and the Triangular fuzzy set (i.e., membership
 function).
 """
+
 import os
 import unittest
 from pathlib import Path

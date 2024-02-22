@@ -1,6 +1,7 @@
 """
 Implements various membership functions by inheriting from ContinuousFuzzySet.
 """
+
 from typing import List
 
 import torch

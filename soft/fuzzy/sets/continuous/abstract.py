@@ -3,6 +3,7 @@ Implements an abstract class called ContinuousFuzzySet using PyTorch. All fuzzy 
 a continuous domain are derived from this class. Further, the Membership class is defined within,
 which contains a helpful interface understanding membership degrees.
 """
+
 import inspect
 from pathlib import Path
 from collections import namedtuple
@@ -405,38 +406,42 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
 
         centers = torch.vstack(
             [
-                torch.nn.functional.pad(
-                    params.centers,
-                    pad=(
-                        0,
+                (
+                    torch.nn.functional.pad(
+                        params.centers,
+                        pad=(
+                            0,
+                            ContinuousFuzzySet.count_granule_terms(granules).max()
+                            - params.centers.shape[0],
+                        ),
+                        mode="constant",
+                        value=missing_center,
+                    )
+                    if params.centers.dim() > 0
+                    else torch.tensor(missing_center).repeat(
                         ContinuousFuzzySet.count_granule_terms(granules).max()
-                        - params.centers.shape[0],
-                    ),
-                    mode="constant",
-                    value=missing_center,
-                )
-                if params.centers.dim() > 0
-                else torch.tensor(missing_center).repeat(
-                    ContinuousFuzzySet.count_granule_terms(granules).max()
+                    )
                 )
                 for params in granules
             ]
         )
         widths = torch.vstack(
             [
-                torch.nn.functional.pad(
-                    params.widths,
-                    pad=(
-                        0,
+                (
+                    torch.nn.functional.pad(
+                        params.widths,
+                        pad=(
+                            0,
+                            ContinuousFuzzySet.count_granule_terms(granules).max()
+                            - params.widths.shape[0],
+                        ),
+                        mode="constant",
+                        value=missing_width,
+                    )
+                    if params.centers.dim() > 0
+                    else torch.tensor(missing_center).repeat(
                         ContinuousFuzzySet.count_granule_terms(granules).max()
-                        - params.widths.shape[0],
-                    ),
-                    mode="constant",
-                    value=missing_width,
-                )
-                if params.centers.dim() > 0
-                else torch.tensor(missing_center).repeat(
-                    ContinuousFuzzySet.count_granule_terms(granules).max()
+                    )
                 )
                 for params in granules
             ]

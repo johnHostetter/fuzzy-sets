@@ -1,6 +1,7 @@
 """
 Implements the discrete fuzzy sets.
 """
+
 from abc import ABC, abstractmethod
 from typing import Union, List, NoReturn, Tuple
 

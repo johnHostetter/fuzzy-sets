@@ -1,6 +1,7 @@
 """
 Test the DiscreteFuzzySet and TestFuzzyVariable classes.
 """
+
 import unittest
 
 from soft.fuzzy.sets.discrete import (

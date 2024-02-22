@@ -1,6 +1,7 @@
 """
 Test various t-norm operations, such as the algebraic product.
 """
+
 import unittest
 
 import torch

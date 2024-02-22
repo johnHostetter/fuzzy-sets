@@ -1,6 +1,7 @@
 """
 Test the aggregation operator called the ordered weighted averaging operator.
 """
+
 import unittest
 
 import torch

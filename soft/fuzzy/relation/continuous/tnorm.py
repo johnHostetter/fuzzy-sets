@@ -1,6 +1,7 @@
 """
 Implements the t-norm fuzzy relations.
 """
+
 import torch
 
 

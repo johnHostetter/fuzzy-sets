@@ -1,6 +1,7 @@
 """
 Implements aggregation operators in fuzzy theory.
 """
+
 import torch.nn
 
 
