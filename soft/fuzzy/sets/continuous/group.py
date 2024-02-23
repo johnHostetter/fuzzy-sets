@@ -57,7 +57,7 @@ class GroupedFuzzySets(torch.nn.Module):
         # store data that we have seen to later add new fuzzy sets
         self.data_seen: List[torch.Tensor] = []
         # after we see this many data points, we will update the fuzzy sets
-        self.data_limit_until_update: int = 1
+        self.data_limit_until_update: int = 64
 
     def __getattribute__(self, item):
         try:
@@ -276,8 +276,11 @@ class GroupedFuzzySets(torch.nn.Module):
                     # no exemplars found in any dimension
                     return observations, module_responses, module_masks
 
-                exemplars: torch.Tensor = torch.hstack(exemplars)
-
+                try:
+                    exemplars: torch.Tensor = torch.hstack(exemplars)
+                except RuntimeError:
+                    # no exemplars found in any dimension
+                    return observations, module_responses, module_masks
                 # Create a new matrix with nan values
                 new_centers = torch.full_like(exemplars, float("nan"))
 
