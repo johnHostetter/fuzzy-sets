@@ -21,7 +21,7 @@ def algebraic_product(elements: np.ndarray, importance: np.ndarray) -> np.float3
     Returns:
         The algebraic product of the given elements.
     """
-    return np.product(elements * importance)
+    return np.prod(elements * importance)
 
 
 class TestAlgebraicProduct(unittest.TestCase):
