@@ -499,5 +499,5 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
         return Membership(
             elements=observations,
             degrees=degrees.to_sparse() if self.use_sparse_tensor else degrees,
-            mask=self.mask
+            mask=self.mask,
         )
