@@ -126,6 +126,7 @@ def get_object_attributes(obj_instance) -> Dict[str, Any]:
         if (attr, value) not in super_attributes and not attr.startswith("_")
     }
 
+
 # the following code is not used, but may be useful in the future
 
 # class GaussianDropout(torch.nn.Module):
