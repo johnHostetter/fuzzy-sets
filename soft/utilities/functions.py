@@ -126,52 +126,53 @@ def get_object_attributes(obj_instance) -> Dict[str, Any]:
         if (attr, value) not in super_attributes and not attr.startswith("_")
     }
 
+# the following code is not used, but may be useful in the future
 
-class GaussianDropout(torch.nn.Module):
-    """
-    Gaussian Dropout as defined in the paper "Gaussian Dropout" by Srivastava et al. (2014).
-
-    Similar to:
-        https://keras.io/api/layers/regularization_layers/gaussian_dropout/
-    """
-
-    def __init__(self, probability=0.5):
-        """
-        Initialize the Gaussian Dropout layer.
-        """
-        super().__init__()
-        if probability <= 0 or probability >= 1:
-            raise ValueError("Probability value, p, should accomplish 0 < p < 1")
-        self.probability = probability
-
-    def forward(self, tensor: torch.Tensor):
-        """
-        Apply Gaussian Dropout to the input tensor.
-        """
-        if self.training:
-            standard_deviation = (self.probability / (1.0 - self.probability)) ** 0.5
-            epsilon = torch.rand_like(tensor) * standard_deviation
-            return tensor * epsilon
-        return tensor
-
-
-def raw_dropout(tensor: torch.Tensor, probability):
-    """
-    Apply raw dropout to the input tensor.
-    """
-    # generate a binary mask based on the dropout probability
-    shape: list = list(tensor.shape)
-    shape[-1] = 2
-
-    weights = torch.empty(shape, dtype=torch.float)
-    weights[:, :, 0] = probability
-    weights[:, :, 1] = 1 - probability
-    mask = torch.multinomial(
-        weights.view(-1, 2),
-        num_samples=tensor.shape[-1],
-        replacement=True,
-    ).view(tensor.shape)
-
-    # apply the mask to the input tensor
-    return tensor * mask  # my defn, weight balancing
-    # return (tensor * mask) / (1 - probability)
+# class GaussianDropout(torch.nn.Module):
+#     """
+#     Gaussian Dropout as defined in the paper "Gaussian Dropout" by Srivastava et al. (2014).
+#
+#     Similar to:
+#         https://keras.io/api/layers/regularization_layers/gaussian_dropout/
+#     """
+#
+#     def __init__(self, probability=0.5):
+#         """
+#         Initialize the Gaussian Dropout layer.
+#         """
+#         super().__init__()
+#         if probability <= 0 or probability >= 1:
+#             raise ValueError("Probability value, p, should accomplish 0 < p < 1")
+#         self.probability = probability
+#
+#     def forward(self, tensor: torch.Tensor):
+#         """
+#         Apply Gaussian Dropout to the input tensor.
+#         """
+#         if self.training:
+#             standard_deviation = (self.probability / (1.0 - self.probability)) ** 0.5
+#             epsilon = torch.rand_like(tensor) * standard_deviation
+#             return tensor * epsilon
+#         return tensor
+#
+#
+# def raw_dropout(tensor: torch.Tensor, probability):
+#     """
+#     Apply raw dropout to the input tensor.
+#     """
+#     # generate a binary mask based on the dropout probability
+#     shape: list = list(tensor.shape)
+#     shape[-1] = 2
+#
+#     weights = torch.empty(shape, dtype=torch.float)
+#     weights[:, :, 0] = probability
+#     weights[:, :, 1] = 1 - probability
+#     mask = torch.multinomial(
+#         weights.view(-1, 2),
+#         num_samples=tensor.shape[-1],
+#         replacement=True,
+#     ).view(tensor.shape)
+#
+#     # apply the mask to the input tensor
+#     return tensor * mask  # my defn, weight balancing
+#     # return (tensor * mask) / (1 - probability)

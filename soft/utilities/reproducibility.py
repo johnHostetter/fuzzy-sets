@@ -43,10 +43,7 @@ def env_seed(env, seed: int) -> None:
         None
     """
     set_rng(seed)
-    try:
-        env.reset(seed=seed)
-    except TypeError:  # older version of gym (e.g., 0.21)
-        env.seed(seed)
+    env.reset(seed=seed)  # for older version of gym (e.g., 0.21) use env.seed(seed)
     env.action_space.seed(seed)
 
 
@@ -81,14 +78,7 @@ def load_configuration(
     """
     file_path = path_to_project_root() / "configurations" / file_name
     config = Config(str(file_path))
-    # device = torch.device(
-    #     f"cuda:{torch.cuda.current_device()}" if torch.cuda.is_available() else "cpu"
-    # )
     torch.set_default_device("cpu")
-    # with config.unfreeze():
-    #     config.device = device
-    if "device" in config:
-        print(f"Using device: {config.device}")
     if convert_data_types:
         return parse_configuration(config)
     return config
