@@ -3,6 +3,7 @@ Implements an abstract class called ContinuousFuzzySet using PyTorch. All fuzzy 
 a continuous domain are derived from this class. Further, the Membership class is defined within,
 which contains a helpful interface understanding membership degrees.
 """
+
 import inspect
 from pathlib import Path
 from collections import namedtuple
@@ -60,11 +61,13 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
         self,
         centers=None,
         widths=None,
+        use_sparse_tensor=False,
         labels: List[str] = None,
     ):
         super().__init__()
         self.centers = torch.nn.Parameter(convert_to_tensor(centers).float())
         self.widths = torch.nn.Parameter(convert_to_tensor(widths).float())
+        self.use_sparse_tensor = use_sparse_tensor
         self.mask = self.widths > 0.0
         self.labels = labels
 
@@ -405,38 +408,42 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
 
         centers = torch.vstack(
             [
-                torch.nn.functional.pad(
-                    params.centers,
-                    pad=(
-                        0,
+                (
+                    torch.nn.functional.pad(
+                        params.centers,
+                        pad=(
+                            0,
+                            ContinuousFuzzySet.count_granule_terms(granules).max()
+                            - params.centers.shape[0],
+                        ),
+                        mode="constant",
+                        value=missing_center,
+                    )
+                    if params.centers.dim() > 0
+                    else torch.tensor(missing_center).repeat(
                         ContinuousFuzzySet.count_granule_terms(granules).max()
-                        - params.centers.shape[0],
-                    ),
-                    mode="constant",
-                    value=missing_center,
-                )
-                if params.centers.dim() > 0
-                else torch.tensor(missing_center).repeat(
-                    ContinuousFuzzySet.count_granule_terms(granules).max()
+                    )
                 )
                 for params in granules
             ]
         )
         widths = torch.vstack(
             [
-                torch.nn.functional.pad(
-                    params.widths,
-                    pad=(
-                        0,
+                (
+                    torch.nn.functional.pad(
+                        params.widths,
+                        pad=(
+                            0,
+                            ContinuousFuzzySet.count_granule_terms(granules).max()
+                            - params.widths.shape[0],
+                        ),
+                        mode="constant",
+                        value=missing_width,
+                    )
+                    if params.centers.dim() > 0
+                    else torch.tensor(missing_center).repeat(
                         ContinuousFuzzySet.count_granule_terms(granules).max()
-                        - params.widths.shape[0],
-                    ),
-                    mode="constant",
-                    value=missing_width,
-                )
-                if params.centers.dim() > 0
-                else torch.tensor(missing_center).repeat(
-                    ContinuousFuzzySet.count_granule_terms(granules).max()
+                    )
                 )
                 for params in granules
             ]
@@ -485,11 +492,12 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
         observations: torch.Tensor = convert_to_tensor(observations).float()
         if observations.ndim <= self.centers.ndim:
             observations = observations.unsqueeze(dim=-1)
-        # degrees = self.calculate_membership(observations)
-        # mask = torch.zeros(degrees.shape[1:])
-        # return Membership(degrees, mask)
         if observations.get_device() == -1:  # CPU
             degrees: torch.Tensor = self.cpu().calculate_membership(observations)
         else:  # GPU
             degrees: torch.Tensor = self.cuda().calculate_membership(observations)
-        return Membership(elements=observations, degrees=degrees, mask=self.mask)
+        return Membership(
+            elements=observations,
+            degrees=degrees.to_sparse() if self.use_sparse_tensor else degrees,
+            mask=self.mask,
+        )

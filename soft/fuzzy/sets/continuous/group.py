@@ -6,6 +6,7 @@ Triangular, Trapezoidal, etc. Then, subsequent inference engines can handle thes
 defined fuzzy sets with no difficulty. Further, this class was specifically designed to incorporate
 dynamic addition of new fuzzy sets in the construction of neuro-fuzzy networks via network morphism.
 """
+
 import pickle
 import inspect
 from pathlib import Path
@@ -56,16 +57,16 @@ class GroupedFuzzySets(torch.nn.Module):
         # store data that we have seen to later add new fuzzy sets
         self.data_seen: List[torch.Tensor] = []
         # after we see this many data points, we will update the fuzzy sets
-        self.data_limit_until_update: int = 1
+        self.data_limit_until_update: int = 64
 
     def __getattribute__(self, item):
         try:
             if item in ("centers", "widths", "sigmas"):
                 modules_list = self.__dict__["_modules"]["modules_list"]
                 if len(modules_list) > 0:
-                    module_attributes: List[
-                        torch.Tensor
-                    ] = []  # the secondary response denoting module filter
+                    module_attributes: List[torch.Tensor] = (
+                        []
+                    )  # the secondary response denoting module filter
                     for module in modules_list:
                         module_attributes.append(getattr(module, item))
                     return torch.cat(module_attributes, dim=-1)
@@ -201,12 +202,12 @@ class GroupedFuzzySets(torch.nn.Module):
         if len(self.modules_list) > 0:
             # modules' responses are membership degrees when modules are ContinuousFuzzySet
             module_elements: List[torch.Tensor] = []
-            module_memberships: List[
-                torch.Tensor
-            ] = []  # the primary response from the module
-            module_masks: List[
-                torch.Tensor
-            ] = []  # the secondary response denoting module filter
+            module_memberships: List[torch.Tensor] = (
+                []
+            )  # the primary response from the module
+            module_masks: List[torch.Tensor] = (
+                []
+            )  # the secondary response denoting module filter
             for module in self.modules_list:
                 membership: Membership = module(observations)
                 module_elements.append(membership.elements.cpu())
@@ -260,9 +261,11 @@ class GroupedFuzzySets(torch.nn.Module):
 
                 for var_idx in range(all_data.shape[-1]):
                     exemplars.append(
-                        torch.Tensor(self.evenly_spaced_exemplars(
-                            all_data[:, var_idx].detach().cpu().numpy(), 3
-                        ))
+                        torch.Tensor(
+                            self.evenly_spaced_exemplars(
+                                all_data[:, var_idx].detach().cpu().numpy(), 3
+                            )
+                        )
                     )
                     if len(exemplars[-1]) == 0:
                         exemplars = (
@@ -273,8 +276,11 @@ class GroupedFuzzySets(torch.nn.Module):
                     # no exemplars found in any dimension
                     return observations, module_responses, module_masks
 
-                exemplars: torch.Tensor = torch.hstack(exemplars)
-
+                try:
+                    exemplars: torch.Tensor = torch.hstack(exemplars)
+                except RuntimeError:
+                    # no exemplars found in any dimension
+                    return observations, module_responses, module_masks
                 # Create a new matrix with nan values
                 new_centers = torch.full_like(exemplars, float("nan"))
 

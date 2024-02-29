@@ -1,6 +1,7 @@
 """
 Test extensions of the BaseDiscreteFuzzySet, such as AlphaCut or SpecialFuzzySet.
 """
+
 import unittest
 
 from soft.fuzzy.relation.discrete.snorm import StandardUnion

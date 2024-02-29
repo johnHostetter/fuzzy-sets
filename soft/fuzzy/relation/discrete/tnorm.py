@@ -1,6 +1,7 @@
 """
 Implements the t-norm fuzzy relations.
 """
+
 from typing import List
 
 from soft.fuzzy.sets.discrete import DiscreteFuzzySet

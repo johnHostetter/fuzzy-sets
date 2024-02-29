@@ -1,13 +1,18 @@
 """
 Utility functions, such as for getting the powerset of an iterable.
 """
+
 import inspect
-from typing import Dict, Any, List, Set
+from pathlib import Path
 from collections.abc import Iterable
 from itertools import chain, combinations
+from typing import Dict, Any, List, Set, Union
 
 import torch
 import numpy as np
+from natsort import natsorted  # sorts lists "naturally"
+
+from soft.utilities.reproducibility import path_to_project_root
 
 
 def powerset(iterable: Iterable, min_items: int):
@@ -126,51 +131,82 @@ def get_object_attributes(obj_instance) -> Dict[str, Any]:
     }
 
 
-class GaussianDropout(torch.nn.Module):
+def get_most_recent_directory(path_to_folder: Union[str, Path]) -> Path:
     """
-    Gaussian Dropout as defined in the paper "Gaussian Dropout" by Srivastava et al. (2014).
+    Get the path to the most recent data within a directory.
 
-    Similar to:
-        https://keras.io/api/layers/regularization_layers/gaussian_dropout/
+    Args:
+        path_to_folder: The path to the directory containing the data, models, or logs.
+
+    Returns:
+        The path to the most recent data.
     """
+    if not isinstance(path_to_folder, Path):
+        path_to_folder = Path(path_to_folder)
 
-    def __init__(self, probability=0.5):
-        """
-        Initialize the Gaussian Dropout layer.
-        """
-        super().__init__()
-        if probability <= 0 or probability >= 1:
-            raise ValueError("Probability value, p, should accomplish 0 < p < 1")
-        self.probability = probability
-
-    def forward(self, tensor: torch.Tensor):
-        """
-        Apply Gaussian Dropout to the input tensor.
-        """
-        if self.training:
-            standard_deviation = (self.probability / (1.0 - self.probability)) ** 0.5
-            epsilon = torch.rand_like(tensor) * standard_deviation
-            return tensor * epsilon
-        return tensor
+    # iterate over the different exercises of training data
+    exercise_file_path_generator = natsorted(  # sort the files naturally
+        # natsorted was chosen to sort the files naturally because the default sort
+        # function sorts the files lexicographically, which is not what we want
+        (  # ignore any problem-level data in this subdirectory
+            path_to_project_root() / path_to_folder
+        ).glob("*")
+    )  # find all the .csv files in the directory that have the pattern "*_*.csv"
+    if len(exercise_file_path_generator) == 0:
+        raise FileNotFoundError(f"No directories found for {path_to_folder}...")
+    file = exercise_file_path_generator[-1]  # get the most recent data for the exercise
+    if not file.is_dir():
+        raise FileNotFoundError(f"Skipping {file.name} (it is not a directory)...")
+    return file
 
 
-def raw_dropout(tensor: torch.Tensor, probability):
-    """
-    Apply raw dropout to the input tensor.
-    """
-    # generate a binary mask based on the dropout probability
-    shape: list = list(tensor.shape)
-    shape[-1] = 2
+# the following code is not used, but may be useful in the future
 
-    weights = torch.empty(shape, dtype=torch.float)
-    weights[:, :, 0] = probability
-    weights[:, :, 1] = 1 - probability
-    mask = torch.multinomial(
-        weights.view(-1, 2),
-        num_samples=tensor.shape[-1],
-        replacement=True,
-    ).view(tensor.shape)
-
-    # apply the mask to the input tensor
-    return tensor * mask  # my defn, weight balancing
-    # return (tensor * mask) / (1 - probability)
+# class GaussianDropout(torch.nn.Module):
+#     """
+#     Gaussian Dropout as defined in the paper "Gaussian Dropout" by Srivastava et al. (2014).
+#
+#     Similar to:
+#         https://keras.io/api/layers/regularization_layers/gaussian_dropout/
+#     """
+#
+#     def __init__(self, probability=0.5):
+#         """
+#         Initialize the Gaussian Dropout layer.
+#         """
+#         super().__init__()
+#         if probability <= 0 or probability >= 1:
+#             raise ValueError("Probability value, p, should accomplish 0 < p < 1")
+#         self.probability = probability
+#
+#     def forward(self, tensor: torch.Tensor):
+#         """
+#         Apply Gaussian Dropout to the input tensor.
+#         """
+#         if self.training:
+#             standard_deviation = (self.probability / (1.0 - self.probability)) ** 0.5
+#             epsilon = torch.rand_like(tensor) * standard_deviation
+#             return tensor * epsilon
+#         return tensor
+#
+#
+# def raw_dropout(tensor: torch.Tensor, probability):
+#     """
+#     Apply raw dropout to the input tensor.
+#     """
+#     # generate a binary mask based on the dropout probability
+#     shape: list = list(tensor.shape)
+#     shape[-1] = 2
+#
+#     weights = torch.empty(shape, dtype=torch.float)
+#     weights[:, :, 0] = probability
+#     weights[:, :, 1] = 1 - probability
+#     mask = torch.multinomial(
+#         weights.view(-1, 2),
+#         num_samples=tensor.shape[-1],
+#         replacement=True,
+#     ).view(tensor.shape)
+#
+#     # apply the mask to the input tensor
+#     return tensor * mask  # my defn, weight balancing
+#     # return (tensor * mask) / (1 - probability)

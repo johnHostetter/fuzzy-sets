@@ -1,6 +1,7 @@
 """
 Demo of working with discrete fuzzy sets for a toy task regarding knowledge of material.
 """
+
 from sympy import Symbol, Interval, oo  # oo is infinity
 
 from soft.fuzzy.relation.discrete.tnorm import StandardIntersection

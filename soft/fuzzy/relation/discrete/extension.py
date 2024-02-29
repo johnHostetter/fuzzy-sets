@@ -1,6 +1,7 @@
 """
 Implementation of the special fuzzy set and the alpha cut operation for discrete fuzzy sets.
 """
+
 from typing import List, Union
 
 import sympy

@@ -1,6 +1,7 @@
 """
 Implements various membership functions by inheriting from ContinuousFuzzySet.
 """
+
 from typing import List
 
 import torch
@@ -146,7 +147,9 @@ class LogisticCurve(torch.nn.Module):
         Returns:
 
         """
-        return self.supremum / (1 + torch.exp(-self.growth * (tensors - self.midpoint)))
+        return self.supremum / (
+            1 + torch.exp(-1.0 * self.growth * (tensors - self.midpoint))
+        )
 
 
 class Triangular(ContinuousFuzzySet):
