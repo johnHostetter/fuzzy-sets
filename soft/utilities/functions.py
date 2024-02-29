@@ -3,12 +3,16 @@ Utility functions, such as for getting the powerset of an iterable.
 """
 
 import inspect
+from pathlib import Path
 from collections.abc import Iterable
-from typing import Dict, Any, List, Set
 from itertools import chain, combinations
+from typing import Dict, Any, List, Set, Union
 
 import torch
 import numpy as np
+from natsort import natsorted  # sorts lists "naturally"
+
+from soft.utilities.reproducibility import path_to_project_root
 
 
 def powerset(iterable: Iterable, min_items: int):
@@ -125,6 +129,34 @@ def get_object_attributes(obj_instance) -> Dict[str, Any]:
         for attr, value in local_attributes
         if (attr, value) not in super_attributes and not attr.startswith("_")
     }
+
+def get_most_recent_directory(path_to_folder: Union[str, Path]) -> Path:
+    """
+    Get the path to the most recent data within a directory.
+
+    Args:
+        path_to_folder: The path to the directory containing the data, models, or logs.
+
+    Returns:
+        The path to the most recent data.
+    """
+    if not isinstance(path_to_folder, Path):
+        path_to_folder = Path(path_to_folder)
+
+    # iterate over the different exercises of training data
+    exercise_file_path_generator = natsorted(  # sort the files naturally
+        # natsorted was chosen to sort the files naturally because the default sort
+        # function sorts the files lexicographically, which is not what we want
+        (  # ignore any problem-level data in this subdirectory
+            path_to_project_root() / path_to_folder
+        ).glob("*")
+    )  # find all the .csv files in the directory that have the pattern "*_*.csv"
+    if len(exercise_file_path_generator) == 0:
+        raise FileNotFoundError(f"No directories found for {path_to_folder}...")
+    file = exercise_file_path_generator[-1]  # get the most recent data for the exercise
+    if not file.is_dir():
+        raise FileNotFoundError(f"Skipping {file.name} (it is not a directory)...")
+    return file
 
 
 # the following code is not used, but may be useful in the future
