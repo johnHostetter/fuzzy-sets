@@ -3,8 +3,8 @@ Utility functions, such as for getting the powerset of an iterable.
 """
 
 import inspect
-from typing import Dict, Any, List, Set
 from collections.abc import Iterable
+from typing import Dict, Any, List, Set
 from itertools import chain, combinations
 
 import torch
