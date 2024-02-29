@@ -130,6 +130,7 @@ def get_object_attributes(obj_instance) -> Dict[str, Any]:
         if (attr, value) not in super_attributes and not attr.startswith("_")
     }
 
+
 def get_most_recent_directory(path_to_folder: Union[str, Path]) -> Path:
     """
     Get the path to the most recent data within a directory.
