@@ -48,16 +48,44 @@ class LogGaussian(ContinuousFuzzySet):
         """
         self.widths = sigmas
 
-    def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
-        return (
-            -1.0
-            * (
-                torch.pow(
-                    observations - self.centers,
-                    2,
-                )
-                / (self.width_multiplier * torch.pow(self.widths, 2) + 1e-32)
+    @staticmethod
+    def internal_calculate_membership(
+        observations: torch.Tensor,
+        centers: torch.Tensor,
+        widths: torch.Tensor,
+        width_multiplier: float,
+    ) -> torch.Tensor:
+        """
+        Calculate the membership of the observations to the Log Gaussian fuzzy set.
+        This is a static method, so it can be called without instantiating the class.
+        This static method is particularly useful when animating the membership function.
+
+        Warning: This method is not meant to be called directly, as it does not take into account
+        the mask that likely should exist. Use the calculate_membership method instead.
+
+        Args:
+            observations: The observations to calculate the membership for.
+            centers: The centers of the Log Gaussian fuzzy set.
+            widths: The widths of the Log Gaussian fuzzy set.
+            width_multiplier: The width multiplier of the Log Gaussian fuzzy set.
+
+        Returns:
+            The membership degrees of the observations for the Log Gaussian fuzzy set.
+        """
+        return -1.0 * (
+            torch.pow(
+                observations - centers,
+                2,
             )
+            / (width_multiplier * torch.pow(widths, 2) + 1e-32)
+        )
+
+    def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
+        return LogGaussian.internal_calculate_membership(
+            observations=observations,
+            centers=self.centers,
+            widths=self.widths,
+            width_multiplier=self.width_multiplier,
         ) * self.mask.to(observations.device)
 
 
@@ -66,10 +94,44 @@ class Gaussian(LogGaussian):
     Implementation of the Gaussian membership function, written in PyTorch.
     """
 
+    @staticmethod
+    def internal_calculate_membership(
+        observations: torch.Tensor,
+        centers: torch.Tensor,
+        widths: torch.Tensor,
+        width_multiplier: float = 1.0,  # in fuzzy logic, convention is usually 1.0, but can be 2.0
+    ) -> torch.Tensor:
+        """
+        Calculate the membership of the observations to the Gaussian fuzzy set.
+        This is a static method, so it can be called without instantiating the class.
+        This static method is particularly useful when animating the membership function.
+
+        Warning: This method is not meant to be called directly, as it does not take into account
+        the mask that likely should exist. Use the calculate_membership method instead.
+
+        Args:
+            observations: The observations to calculate the membership for.
+            centers: The centers of the Gaussian fuzzy set.
+            widths: The widths of the Gaussian fuzzy set.
+            width_multiplier: The width multiplier of the Gaussian fuzzy set.
+
+        Returns:
+            The membership degrees of the observations for the Gaussian fuzzy set.
+        """
+        return LogGaussian.internal_calculate_membership(
+            centers=centers,
+            widths=widths,
+            width_multiplier=width_multiplier,
+            observations=observations,
+        ).exp()
+
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
-        return super().calculate_membership(observations).exp() * self.mask.to(
-            observations.device
-        )
+        return Gaussian.internal_calculate_membership(
+            observations=observations,
+            centers=self.centers,
+            widths=self.widths,
+            width_multiplier=1.0,
+        ) * self.mask.to(observations.device)
 
 
 class Lorentzian(ContinuousFuzzySet):
@@ -105,17 +167,32 @@ class Lorentzian(ContinuousFuzzySet):
         """
         self.widths = sigmas
 
+    @staticmethod
+    def internal_calculate_membership(
+        observations: torch.Tensor, centers: torch.Tensor, widths: torch.Tensor
+    ) -> torch.Tensor:
+        """
+        Calculate the membership of the observations to the Lorentzian fuzzy set.
+        This is a static method, so it can be called without instantiating the class.
+        This static method is particularly useful when animating the membership function.
+
+        Warning: This method is not meant to be called directly, as it does not take into account
+        the mask that likely should exist. Use the calculate_membership method instead.
+
+        Args:
+            observations: The observations to calculate the membership for.
+            centers: The centers of the Lorentzian fuzzy set.
+            widths: The widths of the Lorentzian fuzzy set.
+
+        Returns:
+            The membership degrees of the observations for the Lorentzian fuzzy set.
+        """
+        return 1 / (1 + torch.pow((centers - observations) / (0.5 * widths), 2))
+
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
-        return self.mask.to(observations.device) * (
-            1
-            / (
-                torch.pow(
-                    (self.centers - observations) / (0.5 * self.widths),
-                    2,
-                )
-                + 1
-            )
-        )
+        return Lorentzian.internal_calculate_membership(
+            observations=observations, centers=self.centers, widths=self.widths
+        ) * self.mask.to(observations.device)
 
 
 class LogisticCurve(torch.nn.Module):
@@ -165,6 +242,31 @@ class Triangular(ContinuousFuzzySet):
     ):
         super().__init__(centers=centers, widths=widths, labels=labels)
 
+    @staticmethod
+    def internal_calculate_membership(
+        centers: torch.Tensor, widths: torch.Tensor, observations: torch.Tensor
+    ) -> torch.Tensor:
+        """
+        Calculate the membership of the observations to the Triangular fuzzy set.
+        This is a static method, so it can be called without instantiating the class.
+        This static method is particularly useful when animating the membership function.
+
+        Warning: This method is not meant to be called directly, as it does not take into account
+        the mask that likely should exist. Use the calculate_membership method instead.
+
+        Args:
+            centers: The centers of the Triangular fuzzy set.
+            widths: The widths of the Triangular fuzzy set.
+            observations: The observations to calculate the membership for.
+
+        Returns:
+            The membership degrees of the observations for the Triangular fuzzy set.
+        """
+        return torch.max(
+            1.0 - (1.0 / widths) * torch.abs(observations - centers),
+            torch.tensor(0.0),
+        )
+
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
         """
         Forward pass of the function. Applies the function to the input elementwise.
@@ -177,7 +279,6 @@ class Triangular(ContinuousFuzzySet):
         Returns:
             The membership degrees of the observations for the Triangular fuzzy set.
         """
-        return torch.max(
-            1.0 - (1.0 / self.widths) * torch.abs(observations - self.centers),
-            torch.tensor(0.0),
+        return Triangular.internal_calculate_membership(
+            observations=observations, centers=self.centers, widths=self.widths
         ) * self.mask.to(observations.device)
