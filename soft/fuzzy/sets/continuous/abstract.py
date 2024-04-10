@@ -10,6 +10,7 @@ from collections import namedtuple
 from abc import abstractmethod, ABC
 from typing import List, NoReturn, Union, MutableMapping, Any, Type
 
+import sympy
 import torch
 import torchquad
 import numpy as np
@@ -161,6 +162,31 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
             The hash of the fuzzy set.
         """
         return hash((type(self), self.centers, self.widths, self.labels))
+
+    @classmethod
+    def render_formula(cls) -> sympy.Expr:
+        """
+        Render of the fuzzy set's membership function.
+
+        Note: This is more beneficial for Python Console or Jupyter Notebook usage.
+
+        Returns:
+            Render of the fuzzy set's membership function.
+        """
+        sympy.init_printing(use_unicode=True)
+        return cls.sympy_formula()
+
+    @classmethod
+    def latex_formula(cls) -> str:
+        """
+        String LaTeX representation of the fuzzy set's membership function.
+
+        Note: This is more beneficial for animations or LaTeX documents.
+
+        Returns:
+            The LaTeX representation of the fuzzy set's membership function.
+        """
+        return sympy.latex(cls.sympy_formula())
 
     def save(self, path: Path):
         """
@@ -455,6 +481,17 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
             centers=centers.cpu().float().detach().tolist(),
             widths=widths.cpu().float().detach().tolist(),
         )
+
+    @classmethod
+    @abstractmethod
+    def sympy_formula(cls) -> sympy.Expr:
+        """
+        The abstract method that defines the membership function of the fuzzy set using sympy.
+
+        Returns:
+            A sympy.Expr object that represents the membership function of the fuzzy set.
+        """
+        raise NotImplementedError("The sympy_formula method must be implemented.")
 
     @abstractmethod
     def calculate_membership(

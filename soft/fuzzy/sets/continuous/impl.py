@@ -4,6 +4,7 @@ Implements various membership functions by inheriting from ContinuousFuzzySet.
 
 from typing import List
 
+import sympy
 import torch
 
 from soft.utilities.functions import convert_to_tensor
@@ -80,6 +81,16 @@ class LogGaussian(ContinuousFuzzySet):
             / (width_multiplier * torch.pow(widths, 2) + 1e-32)
         )
 
+    @classmethod
+    def sympy_formula(cls) -> sympy.Expr:
+        # centers (c), widths (sigma) and observations (x)
+        center_symbol = sympy.Symbol("c")
+        width_symbol = sympy.Symbol("sigma")
+        input_symbol = sympy.Symbol("x")
+        return sympy.sympify(
+            f"-1.0 * pow(({input_symbol} - {center_symbol}), 2) / (2.0 * pow({width_symbol}, 2))"
+        )
+
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
         return LogGaussian.internal_calculate_membership(
             observations=observations,
@@ -124,6 +135,10 @@ class Gaussian(LogGaussian):
             width_multiplier=width_multiplier,
             observations=observations,
         ).exp()
+
+    @classmethod
+    def sympy_formula(cls) -> sympy.Expr:
+        return sympy.exp(LogGaussian.sympy_formula())
 
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
         return Gaussian.internal_calculate_membership(
@@ -188,6 +203,16 @@ class Lorentzian(ContinuousFuzzySet):
             The membership degrees of the observations for the Lorentzian fuzzy set.
         """
         return 1 / (1 + torch.pow((centers - observations) / (0.5 * widths), 2))
+
+    @classmethod
+    def sympy_formula(cls) -> sympy.Expr:
+        # centers (c), widths (sigma) and observations (x)
+        center_symbol = sympy.Symbol("c")
+        width_symbol = sympy.Symbol("sigma")
+        input_symbol = sympy.Symbol("x")
+        return sympy.sympify(
+            f"1 / (1 + pow(({center_symbol} - {input_symbol}) / (0.5 * {width_symbol}), 2))"
+        )
 
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
         return Lorentzian.internal_calculate_membership(
@@ -265,6 +290,16 @@ class Triangular(ContinuousFuzzySet):
         return torch.max(
             1.0 - (1.0 / widths) * torch.abs(observations - centers),
             torch.tensor(0.0),
+        )
+
+    @classmethod
+    def sympy_formula(cls) -> sympy.Expr:
+        # centers (c), widths (w) and observations (x)
+        center_symbol = sympy.Symbol("c")
+        width_symbol = sympy.Symbol("w")
+        input_symbol = sympy.Symbol("x")
+        return sympy.sympify(
+            f"max(1.0 - (1.0 / {width_symbol}) * abs({input_symbol} - {center_symbol}), 0.0)"
         )
 
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
