@@ -8,14 +8,18 @@ import inspect
 from pathlib import Path
 from collections import namedtuple
 from abc import abstractmethod, ABC
-from typing import List, NoReturn, Union, MutableMapping, Any, Type
+from typing import List, NoReturn, Union, MutableMapping, Any, Type, Tuple
 
 import sympy
 import torch
 import torchquad
 import numpy as np
+import scienceplots
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 
 from soft.utilities.functions import convert_to_tensor, all_subclasses
+from soft.utilities.reproducibility import path_to_project_root
 
 
 class Membership(
@@ -395,6 +399,76 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
             )
 
         return variables
+
+    def plot(self, selected_terms: List[Tuple[int, int]] = None):
+        """
+        Plot the fuzzy set.
+
+        Returns:
+            None
+        """
+        if selected_terms is None:
+            selected_terms = []
+
+        with plt.style.context(["science", "no-latex", "high-contrast"]):
+            fig, ax = plt.subplots(1, figsize=(6, 4), dpi=100)
+            mpl.rcParams["figure.figsize"] = (6, 4)
+            mpl.rcParams["figure.dpi"] = 100
+            mpl.rcParams["savefig.dpi"] = 100
+            mpl.rcParams["font.size"] = 20
+            mpl.rcParams["legend.fontsize"] = "medium"
+            mpl.rcParams["figure.titlesize"] = "medium"
+            mpl.rcParams['lines.linewidth'] = 2
+            ax.tick_params(width=2, length=6)
+            plt.xticks(fontsize=20)
+            plt.yticks(fontsize=20)
+            for variable_idx in range(self.centers.shape[0]):
+                real_centers: List[float] = [
+                    self.centers[variable_idx, term_idx].item()
+                    for term_idx, mask_value in enumerate(self.mask[variable_idx])
+                    if mask_value == 1
+                ]
+                real_widths: List[float] = [
+                    self.widths[variable_idx, term_idx].item()
+                    for term_idx, mask_value in enumerate(self.mask[variable_idx])
+                    if mask_value == 1
+                ]
+                x_values = torch.linspace(
+                    min(real_centers) - 2 * max(real_widths),
+                    max(real_centers) + 2 * max(real_widths),
+                    1000,
+                )
+
+                if self.centers.ndim == 1 or self.centers.shape[0] == 1:
+                    x_values = x_values[:, None]
+                elif self.centers.ndim == 2 or self.centers.shape[0] > 1:
+                    x_values = x_values[:, None, None]
+
+                memberships: torch.Tensor = self.calculate_membership(x_values)
+
+                if memberships.ndim == 2:
+                    memberships = memberships.unsqueeze(
+                        dim=1)  # add a temporary dimension for the variable
+
+                memberships = memberships.detach().numpy()
+                x_values = x_values.squeeze().detach().numpy()
+
+                for term_idx in range(memberships.shape[-1]):
+                    if self.mask[variable_idx, term_idx] == 0:
+                        continue  # not a real fuzzy set
+                    y_values = memberships[:, variable_idx, term_idx]
+                    label: str = "$\mu_{" + str(variable_idx + 1) + "," + str(term_idx + 1) + "}$"
+                    if (variable_idx, term_idx) in selected_terms:
+                        # edgecolor="#0bafa9"  # beautiful with facecolor=None  (AAMAS 2023)
+                        plt.fill_between(x_values, y_values, alpha=0.5, hatch='///', label=label)
+                    else:
+                        plt.plot(x_values, y_values, alpha=0.5, label=label)
+                plt.legend(bbox_to_anchor=(0.5, -0.2), loc='upper center', ncol=len(real_centers))
+                plt.subplots_adjust(bottom=0.3, wspace=0.33)
+                output_directory = path_to_project_root() / "output" / "figures"
+                output_directory.mkdir(parents=True, exist_ok=True)
+                plt.savefig(output_directory / f"mu_{variable_idx}.png")
+                plt.clf()
 
     @staticmethod
     def count_granule_terms(granules: List[Type["ContinuousFuzzySet"]]) -> np.ndarray:
