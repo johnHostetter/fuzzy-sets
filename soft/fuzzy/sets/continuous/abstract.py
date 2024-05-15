@@ -411,18 +411,18 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
             selected_terms = []
 
         with plt.style.context(["science", "no-latex", "high-contrast"]):
-            fig, ax = plt.subplots(1, figsize=(6, 4), dpi=100)
-            mpl.rcParams["figure.figsize"] = (6, 4)
-            mpl.rcParams["figure.dpi"] = 100
-            mpl.rcParams["savefig.dpi"] = 100
-            mpl.rcParams["font.size"] = 20
-            mpl.rcParams["legend.fontsize"] = "medium"
-            mpl.rcParams["figure.titlesize"] = "medium"
-            mpl.rcParams['lines.linewidth'] = 2
-            ax.tick_params(width=2, length=6)
-            plt.xticks(fontsize=20)
-            plt.yticks(fontsize=20)
             for variable_idx in range(self.centers.shape[0]):
+                fig, ax = plt.subplots(1, figsize=(6, 4), dpi=100)
+                mpl.rcParams["figure.figsize"] = (6, 4)
+                mpl.rcParams["figure.dpi"] = 100
+                mpl.rcParams["savefig.dpi"] = 100
+                mpl.rcParams["font.size"] = 20
+                mpl.rcParams["legend.fontsize"] = "medium"
+                mpl.rcParams["figure.titlesize"] = "medium"
+                mpl.rcParams['lines.linewidth'] = 2
+                ax.tick_params(width=2, length=6)
+                plt.xticks(fontsize=20)
+                plt.yticks(fontsize=20)
                 real_centers: List[float] = [
                     self.centers[variable_idx, term_idx].item()
                     for term_idx, mask_value in enumerate(self.mask[variable_idx])
