@@ -412,14 +412,14 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
 
         with plt.style.context(["science", "no-latex", "high-contrast"]):
             for variable_idx in range(self.centers.shape[0]):
-                fig, ax = plt.subplots(1, figsize=(6, 4), dpi=100)
+                _, ax = plt.subplots(1, figsize=(6, 4), dpi=100)
                 mpl.rcParams["figure.figsize"] = (6, 4)
                 mpl.rcParams["figure.dpi"] = 100
                 mpl.rcParams["savefig.dpi"] = 100
                 mpl.rcParams["font.size"] = 20
                 mpl.rcParams["legend.fontsize"] = "medium"
                 mpl.rcParams["figure.titlesize"] = "medium"
-                mpl.rcParams['lines.linewidth'] = 2
+                mpl.rcParams["lines.linewidth"] = 2
                 ax.tick_params(width=2, length=6)
                 plt.xticks(fontsize=20)
                 plt.yticks(fontsize=20)
@@ -448,7 +448,8 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
 
                 if memberships.ndim == 2:
                     memberships = memberships.unsqueeze(
-                        dim=1)  # add a temporary dimension for the variable
+                        dim=1
+                    )  # add a temporary dimension for the variable
 
                 memberships = memberships.detach().numpy()
                 x_values = x_values.squeeze().detach().numpy()
@@ -457,13 +458,25 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
                     if self.mask[variable_idx, term_idx] == 0:
                         continue  # not a real fuzzy set
                     y_values = memberships[:, variable_idx, term_idx]
-                    label: str = "$\mu_{" + str(variable_idx + 1) + "," + str(term_idx + 1) + "}$"
+                    label: str = (
+                        r"$\mu_{"
+                        + str(variable_idx + 1)
+                        + ","
+                        + str(term_idx + 1)
+                        + "}$"
+                    )
                     if (variable_idx, term_idx) in selected_terms:
                         # edgecolor="#0bafa9"  # beautiful with facecolor=None  (AAMAS 2023)
-                        plt.fill_between(x_values, y_values, alpha=0.5, hatch='///', label=label)
+                        plt.fill_between(
+                            x_values, y_values, alpha=0.5, hatch="///", label=label
+                        )
                     else:
                         plt.plot(x_values, y_values, alpha=0.5, label=label)
-                plt.legend(bbox_to_anchor=(0.5, -0.2), loc='upper center', ncol=len(real_centers))
+                plt.legend(
+                    bbox_to_anchor=(0.5, -0.2),
+                    loc="upper center",
+                    ncol=len(real_centers),
+                )
                 plt.subplots_adjust(bottom=0.3, wspace=0.33)
                 output_directory = path_to_project_root() / "output" / "figures"
                 output_directory.mkdir(parents=True, exist_ok=True)
