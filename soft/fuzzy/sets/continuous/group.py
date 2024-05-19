@@ -48,7 +48,7 @@ class GroupedFuzzySets(torch.nn.Module):
         self.modules_list = torch.nn.ModuleList(modules_list)
         self.expandable = expandable
         self.pruning = False
-        self.epsilon = 0.1  # epsilon-completeness
+        self.epsilon = 0.5  # epsilon-completeness
         # keep track of minimums and maximums if for fuzzy set width calculation
         self.domain: Dict[str, Union[None, torch.Tensor]] = {
             "minimums": None,
@@ -287,7 +287,7 @@ class GroupedFuzzySets(torch.nn.Module):
                 # Use torch.where to update values that satisfy the condition
                 new_centers = torch.where(
                     self.calculate_module_responses(exemplars)
-                    .degrees.exp().max(dim=-1)  # LogGaussian was used
+                    .degrees.exp().max(dim=-1)  # TODO: assuming LogGaussian was used (exp)
                     .values
                     < self.epsilon,
                     exemplars,
@@ -301,6 +301,7 @@ class GroupedFuzzySets(torch.nn.Module):
                         maximums=self.domain["maximums"],
                         alpha=0.3,
                     )
+
 
                     new_widths = torch.Tensor([term["widths"] for term in terms])
 
