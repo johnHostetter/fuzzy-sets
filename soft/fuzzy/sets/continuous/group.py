@@ -287,7 +287,7 @@ class GroupedFuzzySets(torch.nn.Module):
                 # Use torch.where to update values that satisfy the condition
                 new_centers = torch.where(
                     self.calculate_module_responses(exemplars)
-                    .degrees.max(dim=-1)
+                    .degrees.exp().max(dim=-1)  # LogGaussian was used
                     .values
                     < self.epsilon,
                     exemplars,
