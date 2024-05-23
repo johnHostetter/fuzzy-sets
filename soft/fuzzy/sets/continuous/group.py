@@ -210,13 +210,13 @@ class GroupedFuzzySets(torch.nn.Module):
             )  # the secondary response denoting module filter
             for module in self.modules_list:
                 membership: Membership = module(observations)
-                module_elements.append(membership.elements.cpu())
-                module_memberships.append(membership.degrees.cpu())
-                module_masks.append(membership.mask.float().cpu())
+                module_elements.append(membership.elements)
+                module_memberships.append(membership.degrees)
+                module_masks.append(membership.mask)
             return Membership(
-                elements=torch.cat(module_elements, dim=-1).to(observations.device),
-                degrees=torch.cat(module_memberships, dim=-1).to(observations.device),
-                mask=torch.cat(module_masks, dim=-1).to(observations.device),
+                elements=torch.cat(module_elements, dim=-1),
+                degrees=torch.cat(module_memberships, dim=-1),
+                mask=torch.cat(module_masks, dim=-1),
             )
         raise ValueError("The torch.nn.ModuleList of GroupedFuzzySets is empty.")
 
@@ -252,19 +252,26 @@ class GroupedFuzzySets(torch.nn.Module):
                         module, Gaussian
                     ):
                         with torch.no_grad():
-                            assert (
-                                module_responses.exp() * module_masks
-                            ).max().item() <= 1.0
+                            try:
+                                assert (
+                                    module_responses.exp() * module_masks
+                                ).max().item() <= 1.0
+                            except AssertionError:
+                                raise ValueError(
+                                    "The membership degrees are not in the range [0, 1]."
+                                )
 
                 all_data = torch.vstack(self.data_seen)
                 exemplars: List[torch.Tensor] = []
 
                 for var_idx in range(all_data.shape[-1]):
                     exemplars.append(
-                        torch.Tensor(
+                        torch.as_tensor(
                             self.evenly_spaced_exemplars(
                                 all_data[:, var_idx].detach().cpu().numpy(), 3
-                            )
+                            ),
+                            dtype=torch.float16,
+                            device=all_data.device,
                         )
                     )
                     if len(exemplars[-1]) == 0:
@@ -287,7 +294,8 @@ class GroupedFuzzySets(torch.nn.Module):
                 # Use torch.where to update values that satisfy the condition
                 new_centers = torch.where(
                     self.calculate_module_responses(exemplars)
-                    .degrees.exp().max(dim=-1)  # TODO: assuming LogGaussian was used (exp)
+                    .degrees.exp()
+                    .max(dim=-1)  # TODO: assuming LogGaussian was used (exp)
                     .values
                     < self.epsilon,
                     exemplars,
@@ -301,7 +309,6 @@ class GroupedFuzzySets(torch.nn.Module):
                         maximums=self.domain["maximums"],
                         alpha=0.3,
                     )
-
 
                     new_widths = torch.Tensor([term["widths"] for term in terms])
 

@@ -2,7 +2,7 @@
 Implements various membership functions by inheriting from ContinuousFuzzySet.
 """
 
-from typing import List
+from typing import List, Union
 
 import sympy
 import torch
@@ -24,8 +24,9 @@ class LogGaussian(ContinuousFuzzySet):
         widths=None,
         width_multiplier: float = 1.0,  # in fuzzy logic, convention is usually 1.0, but can be 2.0
         labels: List[str] = None,
+        device: Union[str, torch.device] = torch.device("cpu"),
     ):
-        super().__init__(centers=centers, widths=widths, labels=labels)
+        super().__init__(centers=centers, widths=widths, labels=labels, device=device)
         self.width_multiplier = width_multiplier
         assert int(self.width_multiplier) in [1, 2]
 
@@ -92,12 +93,15 @@ class LogGaussian(ContinuousFuzzySet):
         )
 
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
-        return LogGaussian.internal_calculate_membership(
-            observations=observations,
-            centers=self.centers,
-            widths=self.widths,
-            width_multiplier=self.width_multiplier,
-        ) * self.mask.to(observations.device)
+        return (
+            LogGaussian.internal_calculate_membership(
+                observations=observations,
+                centers=self.centers,
+                widths=self.widths,
+                width_multiplier=self.width_multiplier,
+            )
+            * self.mask
+        )
 
 
 class Gaussian(LogGaussian):
@@ -141,12 +145,15 @@ class Gaussian(LogGaussian):
         return sympy.exp(LogGaussian.sympy_formula())
 
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
-        return Gaussian.internal_calculate_membership(
-            observations=observations,
-            centers=self.centers,
-            widths=self.widths,
-            width_multiplier=1.0,
-        ) * self.mask.to(observations.device)
+        return (
+            Gaussian.internal_calculate_membership(
+                observations=observations,
+                centers=self.centers,
+                widths=self.widths,
+                width_multiplier=1.0,
+            )
+            * self.mask
+        )
 
 
 class Lorentzian(ContinuousFuzzySet):
@@ -159,8 +166,9 @@ class Lorentzian(ContinuousFuzzySet):
         centers=None,
         widths=None,
         labels: List[str] = None,
+        device: Union[str, torch.device] = torch.device("cpu"),
     ):
-        super().__init__(centers=centers, widths=widths, labels=labels)
+        super().__init__(centers=centers, widths=widths, labels=labels, device=device)
 
     @property
     def sigmas(self) -> torch.Tensor:
@@ -215,9 +223,12 @@ class Lorentzian(ContinuousFuzzySet):
         )
 
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
-        return Lorentzian.internal_calculate_membership(
-            observations=observations, centers=self.centers, widths=self.widths
-        ) * self.mask.to(observations.device)
+        return (
+            Lorentzian.internal_calculate_membership(
+                observations=observations, centers=self.centers, widths=self.widths
+            )
+            # * self.mask
+        )
 
 
 class LogisticCurve(torch.nn.Module):
@@ -227,17 +238,29 @@ class LogisticCurve(torch.nn.Module):
     the maximum value of the curve).
     """
 
-    def __init__(self, midpoint, growth, supremum):
+    def __init__(
+        self,
+        midpoint: float,
+        growth: float,
+        supremum: float,
+        device: Union[str, torch.device] = "cpu",
+    ):
         super().__init__()
-        self.midpoint = torch.nn.parameter.Parameter(
-            convert_to_tensor(midpoint)
-        ).float()
-        self.growth = torch.nn.parameter.Parameter(
-            convert_to_tensor(growth).double()
-        ).float()
-        self.supremum = convert_to_tensor(
-            supremum  # not a parameter, so we don't want to track it
-        ).float()
+        if isinstance(device, str):
+            device = torch.device(device)
+        self.device: torch.device = device
+        self.midpoint = torch.nn.Parameter(
+            torch.as_tensor(midpoint, dtype=torch.float16, device=self.device),
+            requires_grad=True,  # explicitly set to True for clarity
+        )
+        self.growth = torch.nn.Parameter(
+            torch.as_tensor(growth, dtype=torch.float16, device=self.device),
+            requires_grad=True,  # explicitly set to True for clarity
+        )
+        self.supremum = torch.nn.Parameter(
+            torch.as_tensor(supremum, dtype=torch.float16, device=self.device),
+            requires_grad=False,  # not a parameter, so we don't want to track it
+        )
 
     def forward(self, tensors: torch.Tensor) -> torch.Tensor:
         """
@@ -264,8 +287,9 @@ class Triangular(ContinuousFuzzySet):
         centers=None,
         widths=None,
         labels: List[str] = None,
+        device: Union[str, torch.device] = torch.device("cpu"),
     ):
-        super().__init__(centers=centers, widths=widths, labels=labels)
+        super().__init__(centers=centers, widths=widths, labels=labels, device=device)
 
     @staticmethod
     def internal_calculate_membership(
@@ -314,6 +338,9 @@ class Triangular(ContinuousFuzzySet):
         Returns:
             The membership degrees of the observations for the Triangular fuzzy set.
         """
-        return Triangular.internal_calculate_membership(
-            observations=observations, centers=self.centers, widths=self.widths
-        ) * self.mask.to(observations.device)
+        return (
+            Triangular.internal_calculate_membership(
+                observations=observations, centers=self.centers, widths=self.widths
+            )
+            * self.mask
+        )
