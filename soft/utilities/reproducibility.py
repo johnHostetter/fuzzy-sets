@@ -78,7 +78,7 @@ def load_configuration(
     """
     file_path = path_to_project_root() / "configurations" / file_name
     config = Config(str(file_path))
-    torch.set_default_device("cpu")
+    torch.set_default_device("cuda" if torch.cuda.is_available() else "cpu")
     if convert_data_types:
         return parse_configuration(config)
     return config
