@@ -93,14 +93,11 @@ class LogGaussian(ContinuousFuzzySet):
         )
 
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
-        return (
-            LogGaussian.internal_calculate_membership(
-                observations=observations,
-                centers=self.centers,
-                widths=self.widths,
-                width_multiplier=self.width_multiplier,
-            )
-            * self.mask
+        return LogGaussian.internal_calculate_membership(
+            observations=observations,
+            centers=self.centers,
+            widths=self.widths,
+            width_multiplier=self.width_multiplier,
         )
 
 
@@ -145,14 +142,11 @@ class Gaussian(LogGaussian):
         return sympy.exp(LogGaussian.sympy_formula())
 
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
-        return (
-            Gaussian.internal_calculate_membership(
-                observations=observations,
-                centers=self.centers,
-                widths=self.widths,
-                width_multiplier=1.0,
-            )
-            * self.mask
+        return Gaussian.internal_calculate_membership(
+            observations=observations,
+            centers=self.centers,
+            widths=self.widths,
+            width_multiplier=1.0,
         )
 
 
@@ -223,11 +217,8 @@ class Lorentzian(ContinuousFuzzySet):
         )
 
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
-        return (
-            Lorentzian.internal_calculate_membership(
-                observations=observations, centers=self.centers, widths=self.widths
-            )
-            # * self.mask
+        return Lorentzian.internal_calculate_membership(
+            observations=observations, centers=self.centers, widths=self.widths
         )
 
 
@@ -338,9 +329,6 @@ class Triangular(ContinuousFuzzySet):
         Returns:
             The membership degrees of the observations for the Triangular fuzzy set.
         """
-        return (
-            Triangular.internal_calculate_membership(
-                observations=observations, centers=self.centers, widths=self.widths
-            )
-            * self.mask
+        return Triangular.internal_calculate_membership(
+            observations=observations, centers=self.centers, widths=self.widths
         )
