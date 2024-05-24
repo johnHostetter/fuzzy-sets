@@ -201,6 +201,14 @@ class GroupedFuzzySets(torch.nn.Module):
         """
         if len(self.modules_list) > 0:
             # modules' responses are membership degrees when modules are ContinuousFuzzySet
+            if len(self.modules_list) == 1:
+                # for computational efficiency, return the response from the only module
+                return self.modules_list[0](observations)
+
+            # this can be computationally expensive, but it is necessary to calculate the responses
+            # from all the modules in the torch.nn.ModuleList of GroupedFuzzySets
+            # ideally this should be done in parallel, but it is not possible with the current
+            # implementation; only use this if the torch.nn.Module objects are different
             module_elements: List[torch.Tensor] = []
             module_memberships: List[torch.Tensor] = (
                 []

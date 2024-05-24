@@ -87,7 +87,7 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
         )
         self.use_sparse_tensor = use_sparse_tensor
         self.mask = torch.nn.Parameter(
-            torch.as_tensor(widths > 0.0, dtype=torch.float32, device=self.device),
+            torch.as_tensor(widths > 0.0, dtype=torch.int8, device=self.device),
             requires_grad=False,  # explicitly set to False (mask is not trainable)
         )
         self.labels = labels  # TODO: possibly remove this attribute
