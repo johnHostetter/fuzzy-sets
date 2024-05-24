@@ -235,7 +235,7 @@ class GroupedFuzzySets(torch.nn.Module):
         Expand the GroupedFuzzySets if necessary.
         """
         if self.expandable and self.training:
-            print('here')
+            print("here")
             # save the data that we have seen
             self.data_seen.append(observations)
 
