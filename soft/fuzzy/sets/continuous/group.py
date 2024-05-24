@@ -235,6 +235,7 @@ class GroupedFuzzySets(torch.nn.Module):
         Expand the GroupedFuzzySets if necessary.
         """
         if self.expandable and self.training:
+            print('here')
             # save the data that we have seen
             self.data_seen.append(observations)
 
@@ -422,7 +423,6 @@ class GroupedFuzzySets(torch.nn.Module):
         Calculate the responses from the modules in the torch.nn.ModuleList of GroupedFuzzySets.
         Expand the GroupedFuzzySets if necessary.
         """
-        observations = convert_to_tensor(observations)
         (
             _,  # module_elements
             module_responses,
