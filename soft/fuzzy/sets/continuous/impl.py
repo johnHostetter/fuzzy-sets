@@ -7,7 +7,6 @@ from typing import List, Union
 import sympy
 import torch
 
-from soft.utilities.functions import convert_to_tensor
 from soft.fuzzy.sets.continuous.abstract import ContinuousFuzzySet
 
 

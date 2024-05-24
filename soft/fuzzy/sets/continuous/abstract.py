@@ -18,8 +18,8 @@ import scienceplots
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-from soft.utilities.functions import convert_to_tensor, all_subclasses
 from soft.utilities.reproducibility import path_to_project_root
+from soft.utilities.functions import convert_to_tensor, all_subclasses
 
 
 class Membership(

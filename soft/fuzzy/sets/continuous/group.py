@@ -19,7 +19,6 @@ from scipy.signal import find_peaks
 
 from soft.fuzzy.sets.continuous.impl import LogGaussian, Gaussian
 from soft.utilities.functions import (
-    convert_to_tensor,
     get_object_attributes,
     find_centers_and_widths,
 )
