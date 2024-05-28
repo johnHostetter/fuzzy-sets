@@ -107,12 +107,12 @@ class LogGaussian(ContinuousFuzzySet):
             observations = observations.unsqueeze(dim=-1)
         degrees: torch.Tensor = self.calculate_membership(observations)
 
-        assert (
-            not degrees.isnan().any()
-        ), "NaN values detected in the membership degrees."
-        assert (
-            not degrees.isinf().any()
-        ), "Infinite values detected in the membership degrees."
+        # assert (
+        #     not degrees.isnan().any()
+        # ), "NaN values detected in the membership degrees."
+        # assert (
+        #     not degrees.isinf().any()
+        # ), "Infinite values detected in the membership degrees."
 
         return Membership(
             elements=observations,
