@@ -10,14 +10,14 @@ dynamic addition of new fuzzy sets in the construction of neuro-fuzzy networks v
 import pickle
 import inspect
 from pathlib import Path
-from typing import List, NoReturn, Union, Tuple, Any, Dict, Set, Type, Optional
+from typing import List, Tuple, Any, Dict, Set, Type
 
 import torch
-import numpy as np
 from natsort import natsorted
-from scipy.signal import find_peaks
 
-from soft.fuzzy.sets.continuous.impl import LogGaussian, Gaussian
+from soft.fuzzy.sets.continuous.impl import LogGaussian
+# from scipy.signal import find_peaks
+
 from soft.utilities.functions import (
     get_object_attributes,
     find_centers_and_widths,
@@ -47,12 +47,8 @@ class GroupedFuzzySets(torch.nn.Module):
         self.modules_list = torch.nn.ModuleList(modules_list)
         self.expandable = expandable
         self.pruning = False
-        self.epsilon = 0.5  # epsilon-completeness
+        self.epsilon = 1.5  # epsilon-completeness
         # keep track of minimums and maximums if for fuzzy set width calculation
-        # self.domain: Dict[str, Union[None, torch.Tensor]] = {
-        #     "minimums": None,
-        #     "maximums": None,
-        # }
         self.minimums: torch.Tensor = torch.empty(0, 0)
         self.maximums: torch.Tensor = torch.empty(0, 0)
         # store data that we have seen to later add new fuzzy sets
@@ -256,58 +252,41 @@ class GroupedFuzzySets(torch.nn.Module):
 
                 # find where the new centers should be added, if any
                 # LogGaussian was used, then use following to check for real membership degrees:
-                for module in self.modules_list:
-                    if isinstance(module, LogGaussian) and not isinstance(
-                            module, Gaussian
-                    ):
-                        with torch.no_grad():
-                            assert (
-                                           module_responses.exp() * module_masks
-                                   ).max().item() <= 1.0, "Membership degrees are not in the range [0, 1]."
+                # for module in self.modules_list:
+                #     if isinstance(module, LogGaussian) and not isinstance(
+                #             module, Gaussian
+                #     ):
+                #         with torch.no_grad():
+                #             assert (
+                #                            module_responses.exp() * module_masks
+                #                    ).max().item() <= 1.0, "Membership degrees are not in the range [0, 1]."
 
                 exemplars: List[torch.Tensor] = []
 
                 max_peaks: int = 3
                 for var_idx in range(self.data_seen.shape[-1]):
-                    try:
-                        discovered_exemplars: torch.tensor = torch.as_tensor(
-                            self.evenly_spaced_exemplars(
-                                self.data_seen[:, var_idx].detach().cpu().numpy(), max_peaks
-                            ),
-                            dtype=torch.float16,
-                            device=self.data_seen.device,
+                    discovered_exemplars: torch.Tensor = self.evenly_spaced_exemplars(
+                        self.data_seen[:, var_idx], max_peaks
+                    )
+                    if discovered_exemplars.ndim == 1:
+                        discovered_exemplars = discovered_exemplars[:, None]
+
+                    num_of_exemplars_found = discovered_exemplars.shape[0]
+                    if num_of_exemplars_found < max_peaks:
+                        # pad the exemplars with torch.nan if there are not enough exemplars
+                        discovered_exemplars = torch.nn.functional.pad(
+                            discovered_exemplars, pad=(
+                                0, 0, 0, max_peaks - num_of_exemplars_found
+                            ), value=torch.nan
                         )
-                        if discovered_exemplars.ndim == 1:
-                            discovered_exemplars = discovered_exemplars[:, None]
 
-                        num_of_exemplars_found = discovered_exemplars.shape[0]
-                        if num_of_exemplars_found < max_peaks:
-                            # pad the exemplars with torch.nan if there are not enough exemplars
-                            discovered_exemplars = torch.nn.functional.pad(
-                                discovered_exemplars, pad=(
-                                    0, 0, 0, max_peaks - num_of_exemplars_found
-                                ), value=torch.nan
-                            )
+                    exemplars.append(discovered_exemplars.transpose(0, 1))
 
-                        exemplars.append(discovered_exemplars.transpose(0, 1))
-                    except IndexError:
-                        print("")
-                    if len(exemplars[-1]) == 0:
-                        exemplars = (
-                            []
-                        )  # discard everything, no exemplars found in this dimension
-                        break  # stop the loop, no need to continue
                 if len(exemplars) == 0:
                     # no exemplars found in any dimension
                     return observations, module_responses, module_masks
 
-                # TODO: I believe this may still throw a RuntimeError if the exemplars are empty
-                # it also throws an error for the following:
-                # RuntimeError: Tensors must have same number of dimensions: got 2 and 1
-                try:
-                    exemplars: torch.Tensor = torch.vstack(exemplars).transpose(0, 1)
-                except RuntimeError:
-                    print("")
+                exemplars: torch.Tensor = torch.vstack(exemplars).transpose(0, 1)
 
                 # Create a new matrix with nan values
                 new_centers = torch.full_like(exemplars, float("nan"))
@@ -324,16 +303,17 @@ class GroupedFuzzySets(torch.nn.Module):
                 )
 
                 if not new_centers.isnan().all():  # add new centers
-                    terms: List[Dict[str, float]] = find_centers_and_widths(
-                        data_point=new_centers.nan_to_num(0).mean(dim=0),
+                    # TODO: this find_centers_and_widths call is problematic
+                    new_widths: torch.Tensor = find_centers_and_widths(
+                        data_point=new_centers.nan_to_num(0.0).mean(dim=0),
                         minimums=self.minimums,
                         maximums=self.maximums,
                         alpha=0.3,
                     )
 
-                    new_widths = torch.tensor(
-                        [term["widths"] for term in terms], device=self.data_seen.device
-                    )
+                    # new_widths = torch.tensor(
+                    #     [term["widths"] for term in terms], device=self.data_seen.device
+                    # )
 
                     # assert new_widths.isnan().any() is False
 
@@ -347,8 +327,11 @@ class GroupedFuzzySets(torch.nn.Module):
                     # above result is tensor that contains new centers, but also contains torch.nan
                     # in the places where a new center is not needed
 
-                    module_type = type(self.modules_list[0])
+
+                    # TODO: this code does not work for torch.jit.script
+                    module_type = type(self.modules_list[0])  # cannot call type
                     if issubclass(module_type, ContinuousFuzzySet):
+                        # cannot call .get_subclass
                         granule = ContinuousFuzzySet.get_subclass(module_type.__name__)(
                             centers=new_centers.nan_to_num(0.0)
                             .transpose(0, 1)
@@ -358,12 +341,23 @@ class GroupedFuzzySets(torch.nn.Module):
                             .max(dim=-1, keepdim=True)
                             .values,
                             device=self.data_seen.device
-                        )
+                        )  # cannot dynamically create a PyTorch module in torch.jit.script
                     else:
                         raise ValueError(
                             "The module type is not ContinuousFuzzySet, and therefore cannot "
                             "be used for dynamic expansion."
                         )
+
+                    # granule = LogGaussian(
+                    #     centers=new_centers.nan_to_num(0.0)
+                    #     .transpose(0, 1)
+                    #     .max(dim=-1, keepdim=True)
+                    #     .values,
+                    #     widths=new_widths.transpose(0, 1)
+                    #     .max(dim=-1, keepdim=True)
+                    #     .values,
+                    #     device=self.data_seen.device
+                    # )
                     print(
                         f"add {granule.centers.shape}; modules already: {len(self.modules_list)}"
                     )
@@ -385,7 +379,7 @@ class GroupedFuzzySets(torch.nn.Module):
         return observations, module_responses, module_masks
 
     @staticmethod
-    def evenly_spaced_exemplars(data: np.ndarray, max_peaks: int) -> np.ndarray:
+    def evenly_spaced_exemplars(data: torch.Tensor, max_peaks: int) -> torch.Tensor:
         """
         Find the peaks in the data and return the peaks, or a subset of the peaks if there are
         more than max_peaks.
@@ -397,13 +391,27 @@ class GroupedFuzzySets(torch.nn.Module):
         Returns:
             The peaks, or a subset of the peaks if there are more than max_peaks.
         """
-        peaks, _ = find_peaks(data)
-        if len(peaks) <= max_peaks:
-            return data[peaks][:, None]  # return the peaks' values
+        # numpy_data = data.detach().cpu()#.numpy()
+        # peak_indices = GroupedFuzzySets.find_peaks(data)
+        # Find the peaks in a 1D tensor
+        peaks = (data[1:-1] > data[:-2]) & (data[1:-1] > data[2:])
+        peak_indices = torch.nonzero(peaks).squeeze() + 1
+        if len(peak_indices) <= max_peaks:
+            sampled_peak_values = data[peak_indices][:, None]  # return the peaks' values
+        else:
+            sampled_peaks_indices = torch.linspace(
+                0, len(peak_indices) - 1, max_peaks, dtype=torch.int
+            )
+            sampled_peaks = peak_indices[sampled_peaks_indices]
+            sampled_peak_values = data[sampled_peaks][:, None]
+        return torch.as_tensor(sampled_peak_values, dtype=torch.float16, device=data.device)
 
-        sampled_peaks_indices = np.linspace(0, len(peaks) - 1, max_peaks).astype(int)
-        sampled_peaks = peaks[sampled_peaks_indices]
-        return data[sampled_peaks][:, None]
+    # @staticmethod
+    # def find_peaks(tensor_data: torch.Tensor) -> torch.Tensor:
+    #     # Find the peaks in a 1D tensor
+    #     peaks = (tensor_data[1:-1] > tensor_data[:-2]) & (tensor_data[1:-1] > tensor_data[2:])
+    #     peak_indices = torch.nonzero(peaks).squeeze() + 1
+    #     return peak_indices
 
     def prune(self, module_type: Type[ContinuousFuzzySet]) -> None:
         """

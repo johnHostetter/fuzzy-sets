@@ -197,7 +197,8 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
         return state_dict
 
     @staticmethod
-    def get_subclass(class_name: str) -> Union[NoReturn, "ContinuousFuzzySet"]:
+    @torch.jit.ignore
+    def get_subclass(class_name: str) -> Union["ContinuousFuzzySet"]:
         """
         Get the subclass of ContinuousFuzzySet with the given class name.
 
