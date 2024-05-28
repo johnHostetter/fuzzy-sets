@@ -194,7 +194,7 @@ class GroupedFuzzySets(torch.nn.Module):
 
     def calculate_module_responses(
         self, observations
-    ) -> Union[Tuple[torch.Tensor, torch.Tensor], NoReturn]:
+    ) -> Membership:
         """
         Calculate the responses from the modules in the torch.nn.ModuleList of GroupedFuzzySets.
         """
@@ -260,14 +260,9 @@ class GroupedFuzzySets(torch.nn.Module):
                         module, Gaussian
                     ):
                         with torch.no_grad():
-                            try:
-                                assert (
-                                    module_responses.exp() * module_masks
-                                ).max().item() <= 1.0
-                            except AssertionError:
-                                raise ValueError(
-                                    "The membership degrees are not in the range [0, 1]."
-                                )
+                            assert (
+                                module_responses.exp() * module_masks
+                            ).max().item() <= 1.0, "Membership degrees are not in the range [0, 1]."
 
                 all_data = torch.vstack(self.data_seen)
                 exemplars: List[torch.Tensor] = []
@@ -291,11 +286,8 @@ class GroupedFuzzySets(torch.nn.Module):
                     # no exemplars found in any dimension
                     return observations, module_responses, module_masks
 
-                try:
-                    exemplars: torch.Tensor = torch.hstack(exemplars)
-                except RuntimeError:
-                    # no exemplars found in any dimension
-                    return observations, module_responses, module_masks
+                exemplars: torch.Tensor = torch.hstack(exemplars)
+
                 # Create a new matrix with nan values
                 new_centers = torch.full_like(exemplars, float("nan"))
 

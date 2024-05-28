@@ -4,10 +4,11 @@ a continuous domain are derived from this class. Further, the Membership class i
 which contains a helpful interface understanding membership degrees.
 """
 
+import abc
 import inspect
 from pathlib import Path
+from abc import abstractmethod
 from collections import namedtuple
-from abc import abstractmethod, ABC
 from typing import List, NoReturn, Union, MutableMapping, Any, Type, Tuple
 
 import sympy
@@ -45,7 +46,7 @@ class Membership(
     """
 
 
-class ContinuousFuzzySet(ABC, torch.nn.Module):
+class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
     """
     A generic and abstract torch.nn.Module class that implements continuous fuzzy sets.
 
@@ -559,27 +560,60 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
         """
         raise NotImplementedError("The sympy_formula method must be implemented.")
 
-    @abstractmethod
-    def calculate_membership(
-        self, observations: torch.Tensor
-    ) -> Union[NoReturn, torch.Tensor]:
-        """
-        Calculate the membership of an element to this fuzzy set; not implemented as this is a
-        generic and abstract class. This method is overridden by a class that specifies the type
-        of fuzzy set (e.g., Gaussian, Triangular).
+    # @abc.abstractmethod
+    # def calculate_membership(
+    #     self, observations: torch.Tensor
+    # ) -> Union[NoReturn, torch.Tensor]:
+    #     """
+    #     Calculate the membership of an element to this fuzzy set; not implemented as this is a
+    #     generic and abstract class. This method is overridden by a class that specifies the type
+    #     of fuzzy set (e.g., Gaussian, Triangular).
+    #
+    #     Args:
+    #         observations: Two-dimensional matrix of observations, where a row is a single
+    #         observation and each column is related to an attribute measured during that observation.
+    #
+    #     Returns:
+    #         None
+    #     """
+    #     raise NotImplementedError(
+    #         "The ContinuousFuzzySet has no defined membership function. Please create a class and "
+    #         "inherit from ContinuousFuzzySet, or use a predefined class, such as Gaussian."
+    #     )
 
-        Args:
-            observations: Two-dimensional matrix of observations, where a row is a single
-            observation and each column is related to an attribute measured during that observation.
+    # def default_forward(self, observations) -> Membership:
+    #     """
+    #     Forward pass of the function. Applies the function to the input elementwise. The
+    #     __internal_forward method is used to calculate the membership degrees of the observations
+    #     for ContinuousFuzzySet objects. The forward is not directly implemented as the
+    #     self.calculate_membership is abstract and must be implemented by the subclass, and by not
+    #     implementing the forward method, this allows the subclasses to be compatible with
+    #     torch.jit.script.
+    #
+    #     Args:
+    #         observations: Two-dimensional matrix of observations,
+    #
+    #     Returns:
+    #         The membership degrees of the observations for the continuous fuzzy set.
+    #     """
+    #     if observations.ndim <= self.centers.ndim:
+    #         observations = observations.unsqueeze(dim=-1)
+    #     degrees: torch.Tensor = self.calculate_membership(observations)
+    #
+    #     assert (
+    #         not degrees.isnan().any()
+    #     ), "NaN values detected in the membership degrees."
+    #     assert (
+    #         not degrees.isinf().any()
+    #     ), "Infinite values detected in the membership degrees."
+    #
+    #     return Membership(
+    #         elements=observations,
+    #         degrees=degrees.to_sparse() if self.use_sparse_tensor else degrees,
+    #         mask=self.mask,
+    #     )
 
-        Returns:
-            None
-        """
-        raise NotImplementedError(
-            "The ContinuousFuzzySet has no defined membership function. Please create a class and "
-            "inherit from ContinuousFuzzySet, or use a predefined class, such as Gaussian."
-        )
-
+    @abc.abstractmethod
     def forward(self, observations) -> Membership:
         """
         Forward pass of the function. Applies the function to the input elementwise.
@@ -592,23 +626,7 @@ class ContinuousFuzzySet(ABC, torch.nn.Module):
         Returns:
             The membership degrees of the observations for the Gaussian fuzzy set.
         """
-        if observations.ndim <= self.centers.ndim:
-            observations = observations.unsqueeze(dim=-1)
-        degrees: torch.Tensor = self.calculate_membership(observations)
-
-        assert (
-            not degrees.isnan().any()
-        ), "NaN values detected in the membership degrees."
-        assert (
-            not degrees.isinf().any()
-        ), "Infinite values detected in the membership degrees."
-
-        # if observations.get_device() == -1:  # CPU
-        #     degrees: torch.Tensor = self.cpu().calculate_membership(observations)
-        # else:  # GPU
-        #     degrees: torch.Tensor = self.cuda().calculate_membership(observations)
-        return Membership(
-            elements=observations,
-            degrees=degrees.to_sparse() if self.use_sparse_tensor else degrees,
-            mask=self.mask,
+        raise NotImplementedError(
+            "The ContinuousFuzzySet has no defined forward function. Please create a class and "
+            "inherit from ContinuousFuzzySet, or use a predefined class, such as Gaussian."
         )

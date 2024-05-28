@@ -30,6 +30,11 @@ class TestGroupedFuzzySets(unittest.TestCase):
                 ),
             ]
         )
+
+        # test compatibility with torch.jit.script
+        torch.jit.script(grouped_fuzzy_sets)
+
+        # test that GroupedFuzzySets can be saved and loaded
         grouped_fuzzy_sets.save(Path("test_grouped_fuzzy_sets"))
         loaded_grouped_fuzzy_sets: GroupedFuzzySets = grouped_fuzzy_sets.load(
             Path("test_grouped_fuzzy_sets")
