@@ -103,8 +103,8 @@ class LogGaussian(ContinuousFuzzySet):
         )
 
     def forward(self, observations) -> Membership:
-        # if observations.ndim <= self.get_centers().ndim:
-        #     observations = observations.unsqueeze(dim=-1)
+        if observations.ndim == self.get_centers().ndim:
+            observations = observations.unsqueeze(dim=-1)
         # we do not need torch.float64 for observations
         degrees: torch.Tensor = self.calculate_membership(observations.float())
 
@@ -182,8 +182,8 @@ class Gaussian(LogGaussian):
         )
 
     def forward(self, observations) -> Membership:
-        # if observations.ndim <= self.get_centers().ndim:
-        #     observations = observations.unsqueeze(dim=-1)
+        if observations.ndim == self.get_centers().ndim:
+            observations = observations.unsqueeze(dim=-1)
         # we do not need torch.float64 for observations
         degrees: torch.Tensor = self.calculate_membership(observations.float())
 
@@ -278,8 +278,8 @@ class Lorentzian(ContinuousFuzzySet):
         )
 
     def forward(self, observations) -> Membership:
-        # if observations.ndim <= self.get_centers().ndim:
-        #     observations = observations.unsqueeze(dim=-1)
+        if observations.ndim == self.get_centers().ndim:
+            observations = observations.unsqueeze(dim=-1)
         # we do not need torch.float64 for observations
         degrees: torch.Tensor = self.calculate_membership(observations.float())
 
@@ -412,8 +412,8 @@ class Triangular(ContinuousFuzzySet):
         )
 
     def forward(self, observations) -> Membership:
-        # if observations.ndim <= self.get_centers().ndim:
-        #     observations = observations.unsqueeze(dim=-1)
+        if observations.ndim == self.get_centers().ndim:
+            observations = observations.unsqueeze(dim=-1)
         # we do not need torch.float64 for observations
         degrees: torch.Tensor = self.calculate_membership(observations.float())
 

@@ -329,13 +329,15 @@ class TestGaussian(unittest.TestCase):
             None
         """
         set_rng(0)
-        element = np.array([[0.0001712, 0.00393354, -0.03641258, -0.01936134]])
+        element = np.array(
+            [[0.0001712], [0.00393354], [-0.03641258], [-0.01936134]], dtype=np.float32
+        )
         target_membership_degrees = torch.tensor(
             [
-                [9.99838713e-01, 4.29740733e-01, 2.21413949e-01, 1.05996197e-02],
-                [9.99951447e-01, 4.24180250e-01, 2.76996031e-01, 8.40594458e-04],
-                [2.34987238e-06, 9.68724670e-01, 5.72716145e-01, 2.14063307e-01],
-                [1.86889382e-02, 9.99939174e-01, 4.46363185e-01, 7.51629552e-03],
+                [9.99838713e-01, 4.31743848e-01, 2.43841216e-01, 1.16034294e-02],
+                [9.99921482e-01, 4.24180250e-01, 2.61315148e-01, 7.60781045e-04],
+                [2.90003716e-06, 9.57533725e-01, 5.72716157e-01, 1.25096619e-01],
+                [7.10183084e-03, 9.99475820e-01, 4.39181758e-01, 7.51629554e-03],
             ],
             device=AVAILABLE_DEVICE,
             dtype=torch.float32,
@@ -363,17 +365,15 @@ class TestGaussian(unittest.TestCase):
             device=AVAILABLE_DEVICE,
         )
         mu_pytorch = gaussian_mf(
-            torch.tensor(element[0], device=AVAILABLE_DEVICE)
+            torch.tensor(element, device=AVAILABLE_DEVICE)
         ).degrees.to_dense()
 
         # make sure the Gaussian parameters are still identical afterward
         assert np.allclose(
             gaussian_mf.get_centers().cpu().detach().numpy(),
-            centers[: element.shape[1]],
+            centers,
         )
-        assert np.allclose(
-            gaussian_mf.get_widths().cpu().detach().numpy(), sigmas[: element.shape[1]]
-        )
+        assert np.allclose(gaussian_mf.get_widths().cpu().detach().numpy(), sigmas)
         # the outputs of the PyTorch and Numpy versions should be approx. equal
         assert torch.allclose(mu_pytorch, target_membership_degrees, rtol=1e-1)
 

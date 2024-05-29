@@ -10,7 +10,7 @@ dynamic addition of new fuzzy sets in the construction of neuro-fuzzy networks v
 import pickle
 import inspect
 from pathlib import Path
-from typing import List, Tuple, Any, Dict, Set, Type
+from typing import List, Tuple, Any, Dict, Set, Type, Union
 
 import torch
 from natsort import natsorted
@@ -121,16 +121,19 @@ class GroupedFuzzySets(torch.nn.Module):
             pickle.dump(local_attributes_only, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     @classmethod
-    def load(cls, path: Path) -> "GroupedFuzzySets":
+    def load(cls, path: Path, device: Union[str, torch.device]) -> "GroupedFuzzySets":
         """
         Load the model from the given path.
 
         Args:
             path: The path to load the GroupedFuzzySet from.
+            device: The device to load the GroupedFuzzySet to.
 
         Returns:
             The loaded GroupedFuzzySet.
         """
+        if isinstance(device, str):
+            device = torch.device(device)
         modules_list = []
         local_attributes_only: Dict[str, Any] = {}
         for file_path in path.iterdir():
@@ -147,7 +150,7 @@ class GroupedFuzzySets(torch.nn.Module):
                         try:
                             modules_list.append(
                                 ContinuousFuzzySet.get_subclass(class_name).load(
-                                    module_path
+                                    module_path, device=device
                                 )
                             )
                         except ValueError:

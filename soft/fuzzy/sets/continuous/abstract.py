@@ -285,20 +285,22 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
         return fuzzy_set_class
 
     @classmethod
-    def load(cls, path: Path) -> "ContinuousFuzzySet":
+    def load(cls, path: Path, device: Union[str, torch.device]) -> "ContinuousFuzzySet":
         """
-        Load the fuzzy set from a file.
+        Load the fuzzy set from a file and put it on the specified device.
 
         Returns:
             None
         """
+        if isinstance(device, str):
+            device: torch.device = torch.device(device)
         state_dict: MutableMapping = torch.load(path)
         centers = state_dict.pop("centers")
         widths = state_dict.pop("widths")
         labels = state_dict.pop("labels")
         class_name = state_dict.pop("class_name")
         return cls.get_subclass(class_name)(
-            centers=centers, widths=widths, labels=labels
+            centers=centers, widths=widths, labels=labels, device=device
         )
 
     # def reshape_parameters(self):

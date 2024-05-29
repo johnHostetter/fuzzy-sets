@@ -11,11 +11,14 @@ from typing import MutableMapping
 from collections import OrderedDict
 
 import torch
-import numpy as np
 
-from soft.utilities.reproducibility import set_rng
+from soft.fuzzy.sets.continuous.impl import Gaussian
 from soft.fuzzy.sets.continuous.abstract import ContinuousFuzzySet
-from soft.fuzzy.sets.continuous.impl import Gaussian, Triangular
+
+
+AVAILABLE_DEVICE: torch.device = torch.device(
+    "cuda" if torch.cuda.is_available() else "cpu"
+)
 
 
 class TestContinuousFuzzySet(unittest.TestCase):
@@ -31,11 +34,15 @@ class TestContinuousFuzzySet(unittest.TestCase):
             None
         """
         with self.assertRaises(NotImplementedError):
-            ContinuousFuzzySet.create(number_of_variables=4, number_of_terms=2)
+            ContinuousFuzzySet.create(
+                number_of_variables=4, number_of_terms=2, device="cpu"
+            )
 
     def test_save_and_load(self) -> None:
         for subclass in ContinuousFuzzySet.__subclasses__():
-            membership_func = subclass.create(number_of_variables=4, number_of_terms=4)
+            membership_func = subclass.create(
+                number_of_variables=4, number_of_terms=4, device=AVAILABLE_DEVICE
+            )
             state_dict: MutableMapping = membership_func.state_dict()
 
             # test that the path must be valid
@@ -65,7 +72,9 @@ class TestContinuousFuzzySet(unittest.TestCase):
                 "class_name"
             ] in (subclass.__name__ for subclass in ContinuousFuzzySet.__subclasses__())
 
-            loaded_membership_func = ContinuousFuzzySet.load(Path("membership_func.pt"))
+            loaded_membership_func = ContinuousFuzzySet.load(
+                Path("membership_func.pt"), device=AVAILABLE_DEVICE
+            )
             # check that the parameters and members are the same
             assert membership_func == loaded_membership_func
             assert torch.allclose(
@@ -85,10 +94,10 @@ class TestContinuousFuzzySet(unittest.TestCase):
             assert torch.allclose(membership_func.area(), loaded_membership_func.area())
             assert torch.allclose(
                 membership_func(
-                    torch.tensor([[0.1, 0.2, 0.3, 0.4]])
+                    torch.tensor([[0.1, 0.2, 0.3, 0.4]], device=AVAILABLE_DEVICE)
                 ).degrees.to_dense(),
                 loaded_membership_func(
-                    torch.tensor([[0.1, 0.2, 0.3, 0.4]])
+                    torch.tensor([[0.1, 0.2, 0.3, 0.4]], device=AVAILABLE_DEVICE)
                 ).degrees.to_dense(),
             )
             # delete the file
