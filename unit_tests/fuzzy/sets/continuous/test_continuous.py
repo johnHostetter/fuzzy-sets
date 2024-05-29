@@ -71,7 +71,9 @@ class TestContinuousFuzzySet(unittest.TestCase):
             assert torch.allclose(
                 membership_func.get_centers(), loaded_membership_func.get_centers()
             )
-            assert torch.allclose(membership_func.get_widths(), loaded_membership_func.get_widths())
+            assert torch.allclose(
+                membership_func.get_widths(), loaded_membership_func.get_widths()
+            )
             if (
                 type(subclass) == Gaussian
             ):  # Gaussian has an additional parameter (alias for widths)

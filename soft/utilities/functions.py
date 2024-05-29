@@ -68,15 +68,17 @@ def find_centers_and_widths(
     for dim, attribute_value in enumerate(data_point):
         left_width: torch.Tensor = torch.sqrt(
             -1.0
-            * (torch.pow((minimums[dim] - attribute_value) + theta, 2) / torch.log(
-                torch.as_tensor([alpha], device=attribute_value.device))
-               )
+            * (
+                torch.pow((minimums[dim] - attribute_value) + theta, 2)
+                / torch.log(torch.as_tensor([alpha], device=attribute_value.device))
+            )
         )
         right_width: torch.Tensor = torch.sqrt(
             -1.0
-            * (torch.pow((maximums[dim] - attribute_value) + theta, 2) / torch.log(
-                torch.as_tensor([alpha], device=attribute_value.device))
-               )
+            * (
+                torch.pow((maximums[dim] - attribute_value) + theta, 2)
+                / torch.log(torch.as_tensor([alpha], device=attribute_value.device))
+            )
         )
         aggregated_sigma: torch.Tensor = regulator(left_width, right_width)
         if sigmas.shape[0] == 0:
