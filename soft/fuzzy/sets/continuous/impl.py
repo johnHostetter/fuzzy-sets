@@ -29,27 +29,27 @@ class LogGaussian(ContinuousFuzzySet):
         self.width_multiplier = width_multiplier
         assert int(self.width_multiplier) in [1, 2]
 
-    @property
-    @torch.jit.ignore
-    def sigmas(self) -> torch.Tensor:
-        """
-        Gets the sigma for the Gaussian fuzzy set; alias for the 'widths' parameter.
-
-        Returns:
-            torch.Tensor
-        """
-        return self.widths
-
-    @sigmas.setter
-    @torch.jit.ignore
-    def sigmas(self, sigmas) -> None:
-        """
-        Sets the sigma for the Gaussian fuzzy set; alias for the 'widths' parameter.
-
-        Returns:
-            None
-        """
-        self.widths = sigmas
+    # @property
+    # @torch.jit.ignore
+    # def sigmas(self) -> torch.Tensor:
+    #     """
+    #     Gets the sigma for the Gaussian fuzzy set; alias for the 'widths' parameter.
+    #
+    #     Returns:
+    #         torch.Tensor
+    #     """
+    #     return self.widths
+    #
+    # @sigmas.setter
+    # @torch.jit.ignore
+    # def sigmas(self, sigmas) -> None:
+    #     """
+    #     Sets the sigma for the Gaussian fuzzy set; alias for the 'widths' parameter.
+    #
+    #     Returns:
+    #         None
+    #     """
+    #     self.widths = sigmas
 
     @staticmethod
     def internal_calculate_membership(
@@ -103,7 +103,7 @@ class LogGaussian(ContinuousFuzzySet):
         )
 
     def forward(self, observations) -> Membership:
-        if observations.ndim <= self.centers.ndim:
+        if observations.ndim <= self.get_centers().ndim:
             observations = observations.unsqueeze(dim=-1)
         degrees: torch.Tensor = self.calculate_membership(observations)
 
@@ -175,14 +175,14 @@ class Gaussian(LogGaussian):
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
         return Gaussian.internal_calculate_membership(
             observations=observations,
-            centers=self.centers,
-            widths=self.widths,
+            centers=self.get_centers(),
+            widths=self.get_widths(),
             width_multiplier=1.0,
         )
 
     def forward(self, observations) -> Membership:
-        if observations.ndim <= self.centers.ndim:
-            observations = observations.unsqueeze(dim=-1)
+        # if observations.ndim <= self.get_centers().ndim:
+        #     observations = observations.unsqueeze(dim=-1)
         degrees: torch.Tensor = self.calculate_membership(observations)
 
         assert (
@@ -195,7 +195,7 @@ class Gaussian(LogGaussian):
         return Membership(
             elements=observations,
             degrees=degrees.to_sparse() if self.use_sparse_tensor else degrees,
-            mask=self.mask,
+            mask=self.get_mask(),
         )
 
 
@@ -401,11 +401,11 @@ class Triangular(ContinuousFuzzySet):
             The membership degrees of the observations for the Triangular fuzzy set.
         """
         return Triangular.internal_calculate_membership(
-            observations=observations, centers=self.centers, widths=self.widths
+            observations=observations, centers=self.get_centers(), widths=self.get_widths()
         )
 
     def forward(self, observations) -> Membership:
-        if observations.ndim <= self.centers.ndim:
+        if observations.ndim <= self.get_centers().ndim:
             observations = observations.unsqueeze(dim=-1)
         degrees: torch.Tensor = self.calculate_membership(observations)
 
@@ -419,5 +419,5 @@ class Triangular(ContinuousFuzzySet):
         return Membership(
             elements=observations,
             degrees=degrees.to_sparse() if self.use_sparse_tensor else degrees,
-            mask=self.mask,
+            mask=self.get_mask(),
         )

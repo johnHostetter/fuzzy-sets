@@ -41,14 +41,14 @@ class TestGaussian(unittest.TestCase):
         gaussian_mf = Gaussian(
             centers=np.array([1.5409961]), widths=np.array([0.30742282])
         )
-        sigma = gaussian_mf.sigmas.cpu().detach().numpy()
-        center = gaussian_mf.centers.cpu().detach().numpy()
+        sigma = gaussian_mf.get_widths().cpu().detach().numpy()
+        center = gaussian_mf.get_centers().cpu().detach().numpy()
         mu_pytorch = gaussian_mf(torch.tensor(element)).degrees.to_dense()
         mu_numpy = gaussian_numpy(element, center, sigma)
 
         # make sure the Gaussian parameters are still identical afterward
-        assert torch.allclose(gaussian_mf.sigmas.cpu(), torch.tensor(sigma))
-        assert torch.allclose(gaussian_mf.centers.cpu(), torch.tensor(center))
+        assert torch.allclose(gaussian_mf.get_widths().cpu(), torch.tensor(sigma))
+        assert torch.allclose(gaussian_mf.get_centers().cpu(), torch.tensor(center))
         # the outputs of the PyTorch and Numpy versions should be approx. equal
         assert np.allclose(mu_pytorch.cpu().detach().numpy(), mu_numpy, rtol=1e-6)
 
@@ -71,15 +71,15 @@ class TestGaussian(unittest.TestCase):
         )
         gaussian_mf = Gaussian(centers=np.array([1.5410]), widths=np.array([0.3074]))
         centers, sigmas = (
-            gaussian_mf.centers.cpu().detach().numpy(),
-            gaussian_mf.sigmas.cpu().detach().numpy(),
+            gaussian_mf.get_centers().cpu().detach().numpy(),
+            gaussian_mf.get_widths().cpu().detach().numpy(),
         )
         mu_pytorch = gaussian_mf(elements).degrees.to_dense()
         mu_numpy = gaussian_numpy(elements, centers, sigmas)
 
         # make sure the Gaussian parameters are still identical afterward
-        assert torch.allclose(gaussian_mf.sigmas.cpu(), torch.tensor(sigmas).float())
-        assert torch.allclose(gaussian_mf.centers.cpu(), torch.tensor(centers).float())
+        assert torch.allclose(gaussian_mf.get_widths().cpu(), torch.tensor(sigmas).float())
+        assert torch.allclose(gaussian_mf.get_centers().cpu(), torch.tensor(centers).float())
         # the outputs of the PyTorch and Numpy versions should be approx. equal
         assert torch.allclose(mu_pytorch.cpu(), mu_numpy)
 
@@ -108,8 +108,8 @@ class TestGaussian(unittest.TestCase):
         mu_numpy = gaussian_numpy(elements, centers, sigmas)
 
         # make sure the Gaussian parameters are still identical afterward
-        assert torch.allclose(gaussian_mf.sigmas.cpu(), torch.tensor(sigmas).float())
-        assert torch.allclose(gaussian_mf.centers.cpu(), torch.tensor(centers).float())
+        assert torch.allclose(gaussian_mf.get_widths().cpu(), torch.tensor(sigmas).float())
+        assert torch.allclose(gaussian_mf.get_centers().cpu(), torch.tensor(centers).float())
         # the outputs of the PyTorch and Numpy versions should be approx. equal
         assert np.allclose(
             mu_pytorch.squeeze(dim=1).cpu().detach().numpy(), mu_numpy, rtol=1e-4
@@ -138,19 +138,19 @@ class TestGaussian(unittest.TestCase):
         elements = torch.tensor(
             [[0.41737163], [0.78705574], [0.40919196], [0.72005216]]
         )
-        sigmas = torch.tensor(
+        sigmas = np.array(
             [0.1, 0.25, 0.5, 0.75, 1.0]
         )  # negative widths are missing sets
-        gaussian_mf = Gaussian(centers=[1.5410], widths=sigmas)
+        gaussian_mf = Gaussian(centers=np.array([1.5410]), widths=sigmas)
         mu_pytorch = gaussian_mf(elements).degrees.to_dense()
         mu_numpy = gaussian_numpy(
             elements,
-            gaussian_mf.centers.cpu().detach().numpy(),
-            sigmas.cpu().detach().numpy(),
+            gaussian_mf.get_centers().cpu().detach().numpy(),
+            sigmas,
         )
 
         # make sure the Gaussian parameters are still identical afterward
-        assert torch.allclose(gaussian_mf.widths.cpu(), sigmas)
+        assert np.allclose(gaussian_mf.get_widths().cpu().detach().numpy(), sigmas)
         # the outputs of the PyTorch and Numpy versions should be approx. equal
         assert np.allclose(
             mu_pytorch.squeeze(dim=1).cpu().detach().numpy(), mu_numpy, rtol=1e-6
@@ -185,8 +185,8 @@ class TestGaussian(unittest.TestCase):
         )
 
         # make sure the Gaussian parameters are still identical afterward
-        assert torch.allclose(gaussian_mf.centers.cpu(), centers)
-        assert torch.allclose(gaussian_mf.widths.cpu(), sigmas)
+        assert torch.allclose(gaussian_mf.get_centers().cpu(), centers)
+        assert torch.allclose(gaussian_mf.get_widths().cpu(), sigmas)
         # the outputs of the PyTorch and Numpy versions should be approx. equal
         assert np.allclose(
             mu_pytorch.squeeze(dim=1).cpu().detach().numpy(), mu_numpy, rtol=1e-6
@@ -242,8 +242,8 @@ class TestGaussian(unittest.TestCase):
         )
 
         # make sure the Gaussian parameters are still identical afterward
-        assert torch.allclose(gaussian_mf.centers.cpu(), centers)
-        assert torch.allclose(gaussian_mf.widths.cpu(), sigmas)
+        assert torch.allclose(gaussian_mf.get_centers().cpu(), centers)
+        assert torch.allclose(gaussian_mf.get_widths().cpu(), sigmas)
         # the outputs of the PyTorch and Numpy versions should be approx. equal
         assert np.allclose(
             mu_pytorch.squeeze(dim=0).cpu().detach().numpy(), mu_numpy, rtol=1e-6
@@ -271,13 +271,13 @@ class TestGaussian(unittest.TestCase):
         element = np.array([[0.0001712, 0.00393354, -0.03641258, -0.01936134]])
         target_membership_degrees = torch.tensor(
             [
-                [9.9984e-01, 4.3174e-01, 2.4384e-01, 1.1603e-02],
-                [9.9992e-01, 4.2418e-01, 2.6132e-01, 7.6078e-04],
-                [2.9000e-06, 9.5753e-01, 5.7272e-01, 1.2510e-01],
-                [7.1018e-03, 9.9948e-01, 4.3918e-01, 7.5163e-03],
+                [9.99838713e-01, 4.29740733e-01, 2.21413949e-01, 1.05996197e-02],
+                [9.99951447e-01, 4.24180250e-01, 2.76996031e-01, 8.40594458e-04],
+                [2.34987238e-06, 9.68724670e-01, 5.72716145e-01, 2.14063307e-01],
+                [1.86889382e-02, 9.99939174e-01, 4.46363185e-01, 7.51629552e-03]
             ]
         )
-        centers = torch.tensor(
+        centers = np.array(
             [
                 [0.01497397, -1.3607662, 1.0883657, 1.9339248],
                 [-0.01367673, 2.3560243, -1.8339163, -3.3379893],
@@ -285,7 +285,7 @@ class TestGaussian(unittest.TestCase):
                 [0.17008819, 0.01596639, -1.7408595, 2.797653],
             ]
         )
-        sigmas = torch.tensor(
+        sigmas = np.array(
             [
                 [1.16553577, 1.48497267, 0.91602303, 0.91602303],
                 [1.98733806, 2.53987592, 1.58646032, 1.24709336],
@@ -301,8 +301,12 @@ class TestGaussian(unittest.TestCase):
         mu_pytorch = gaussian_mf(torch.tensor(element[0])).degrees.to_dense()
 
         # make sure the Gaussian parameters are still identical afterward
-        assert torch.allclose(gaussian_mf.centers.cpu(), centers[: element.shape[1]])
-        assert torch.allclose(gaussian_mf.widths.cpu(), sigmas[: element.shape[1]])
+        assert np.allclose(
+            gaussian_mf.get_centers().cpu().detach().numpy(), centers[: element.shape[1]]
+        )
+        assert np.allclose(
+            gaussian_mf.get_widths().cpu().detach().numpy(), sigmas[: element.shape[1]]
+        )
         # the outputs of the PyTorch and Numpy versions should be approx. equal
         assert torch.allclose(
             mu_pytorch.cpu().float(), target_membership_degrees, rtol=1e-1
@@ -326,8 +330,8 @@ class TestGaussian(unittest.TestCase):
         element = np.array([[0.0001712, 0.00393354, -0.03641258, -0.01936134]])
         target_membership_degrees = gaussian_numpy(
             element.reshape(4, 1),  # column vector
-            gaussian_mf.centers.cpu().detach().numpy(),
-            gaussian_mf.widths.cpu().detach().numpy(),
+            gaussian_mf.get_centers().cpu().detach().numpy(),
+            gaussian_mf.get_widths().cpu().detach().numpy(),
         )
         mu_pytorch = gaussian_mf(torch.tensor(element[0])).degrees.to_dense()
         assert np.allclose(

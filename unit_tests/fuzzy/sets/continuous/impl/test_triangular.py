@@ -45,14 +45,14 @@ class TestTriangular(unittest.TestCase):
         triangular_mf = Triangular(
             centers=np.array([1.5409961]), widths=np.array([0.30742282])
         )
-        center = triangular_mf.centers.cpu().detach().numpy()
-        width = triangular_mf.widths.cpu().detach().numpy()
+        center = triangular_mf.get_centers().cpu().detach().numpy()
+        width = triangular_mf.get_widths().cpu().detach().numpy()
         mu_pytorch = triangular_mf(torch.tensor(element)).degrees.to_dense()
         mu_numpy = triangular_numpy(element, center, width)
 
         # make sure the Triangular parameters are still identical afterward
-        assert torch.allclose(triangular_mf.centers.cpu(), torch.tensor(center))
-        assert torch.allclose(triangular_mf.widths.cpu(), torch.tensor(width))
+        assert torch.allclose(triangular_mf.get_centers().cpu(), torch.tensor(center))
+        assert torch.allclose(triangular_mf.get_widths().cpu(), torch.tensor(width))
         # the outputs of the PyTorch and Numpy versions should be approx. equal
         assert np.allclose(mu_pytorch.cpu().detach().numpy(), mu_numpy, atol=1e-2)
 
@@ -77,17 +77,17 @@ class TestTriangular(unittest.TestCase):
             centers=np.array([1.5410]), widths=np.array([0.3074])
         )
         centers, widths = (
-            triangular_mf.centers.cpu().detach().numpy(),
-            triangular_mf.widths.cpu().detach().numpy(),
+            triangular_mf.get_centers().cpu().detach().numpy(),
+            triangular_mf.get_widths().cpu().detach().numpy(),
         )
         mu_pytorch = triangular_mf(elements).degrees.to_dense()
         mu_numpy = triangular_numpy(elements.cpu().detach().numpy(), centers, widths)
 
         # make sure the Triangular parameters are still identical afterward
         assert torch.allclose(
-            triangular_mf.centers.cpu(), torch.tensor(centers).float()
+            triangular_mf.get_centers().cpu(), torch.tensor(centers).float()
         )
-        assert torch.allclose(triangular_mf.widths.cpu(), torch.tensor(widths).float())
+        assert torch.allclose(triangular_mf.get_widths().cpu(), torch.tensor(widths).float())
         # the outputs of the PyTorch and Numpy versions should be approx. equal
         assert np.allclose(
             mu_pytorch.squeeze(dim=1).cpu().detach().numpy(), mu_numpy, atol=1e-2
@@ -113,15 +113,15 @@ class TestTriangular(unittest.TestCase):
         )
         centers = np.array([0.0, 0.25, 0.5, 0.75, 1.0])
         triangular_mf = Triangular(centers=centers, widths=np.array([0.4962566]))
-        widths = triangular_mf.widths.cpu().detach().numpy()
+        widths = triangular_mf.get_widths().cpu().detach().numpy()
         mu_pytorch = triangular_mf(elements).degrees.to_dense()
         mu_numpy = triangular_numpy(elements.cpu().detach().numpy(), centers, widths)
 
         # make sure the Triangular parameters are still identical afterward
         assert torch.allclose(
-            triangular_mf.centers.cpu(), torch.tensor(centers).float()
+            triangular_mf.get_centers().cpu(), torch.tensor(centers).float()
         )
-        assert torch.allclose(triangular_mf.widths.cpu(), torch.tensor(widths).float())
+        assert torch.allclose(triangular_mf.get_widths().cpu(), torch.tensor(widths).float())
         # the outputs of the PyTorch and Numpy versions should be approx. equal
         assert np.allclose(
             mu_pytorch.squeeze(dim=1).cpu().detach().numpy(), mu_numpy, atol=1e-2
@@ -148,16 +148,16 @@ class TestTriangular(unittest.TestCase):
         widths = np.array(
             [0.1, 0.25, 0.5, 0.75, 1.0]
         )  # negative widths are missing sets
-        triangular_mf = Triangular(centers=[1.5409961], widths=widths)
-        centers = triangular_mf.centers.cpu().detach().numpy()
+        triangular_mf = Triangular(centers=np.array([1.5409961]), widths=widths)
+        centers = triangular_mf.get_centers().cpu().detach().numpy()
         mu_pytorch = triangular_mf(elements).degrees.to_dense()
         mu_numpy = triangular_numpy(elements.cpu().detach().numpy(), centers, widths)
 
         # make sure the Triangular parameters are still identical afterward
         assert torch.allclose(
-            triangular_mf.centers.cpu(), torch.tensor(centers).float()
+            triangular_mf.get_centers().cpu(), torch.tensor(centers).float()
         )
-        assert torch.allclose(triangular_mf.widths.cpu(), torch.tensor(widths).float())
+        assert torch.allclose(triangular_mf.get_widths().cpu(), torch.tensor(widths).float())
         # the outputs of the PyTorch and Numpy versions should be approx. equal
         assert np.allclose(
             mu_pytorch.squeeze(dim=1).cpu().detach().numpy(), mu_numpy, atol=1e-2
@@ -190,8 +190,8 @@ class TestTriangular(unittest.TestCase):
         mu_numpy = triangular_numpy(elements.cpu().detach().numpy(), centers, widths)
 
         # make sure the Triangular parameters are still identical afterward
-        assert np.allclose(triangular_mf.centers.cpu().detach().numpy(), centers)
-        assert np.allclose(triangular_mf.widths.cpu().detach().numpy(), widths)
+        assert np.allclose(triangular_mf.get_centers().cpu().detach().numpy(), centers)
+        assert np.allclose(triangular_mf.get_widths().cpu().detach().numpy(), widths)
         # the outputs of the PyTorch and Numpy versions should be approx. equal
         assert np.allclose(
             mu_pytorch.squeeze(dim=1).cpu().detach().numpy(), mu_numpy, atol=1e-2
@@ -215,8 +215,8 @@ class TestTriangular(unittest.TestCase):
         element = np.array([[0.0001712, 0.00393354, -0.03641258, -0.01936134]])
         target_membership_degrees = triangular_numpy(
             element,
-            triangular_mf.centers.cpu().detach().numpy(),
-            triangular_mf.widths.cpu().detach().numpy(),
+            triangular_mf.get_centers().cpu().detach().numpy(),
+            triangular_mf.get_widths().cpu().detach().numpy(),
         )
         mu_pytorch = triangular_mf(torch.tensor(element[0])).degrees.to_dense()
         assert np.allclose(

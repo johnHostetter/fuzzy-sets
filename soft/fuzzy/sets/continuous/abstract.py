@@ -64,38 +64,52 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
     """
 
     def __init__(
-        self,
-        centers: np.ndarray,
-        widths: np.ndarray,
-        use_sparse_tensor=False,
-        labels: List[str] = None,
-        device: Union[str, torch.device] = "cpu",
+            self,
+            centers: np.ndarray,
+            widths: np.ndarray,
+            use_sparse_tensor=False,
+            labels: List[str] = None,
+            device: Union[str, torch.device] = "cpu",
     ):
         super().__init__()
         if isinstance(device, str):
             self.device = torch.device(device)
         else:
             self.device = device
+
+        if centers.ndim == 1:
+            # assuming that the array is a single linguistic variable
+            centers = centers[None, :]
+        if widths.ndim == 1:
+            # assuming that the array is a single linguistic variable
+            widths = widths[None, :]
+
         # avoid allocating new memory for the centers and widths
         # use torch.float32 to save memory and speed up computations
-        self.centers = torch.nn.Parameter(
-            torch.as_tensor(centers, dtype=torch.float32, device=self.device),
-            requires_grad=True,  # explicitly set to True
-        )
-        self.widths = torch.nn.Parameter(
-            torch.as_tensor(widths, dtype=torch.float32, device=self.device),
-            requires_grad=True,  # explicitly set to True
-        )
+        self._centers = torch.nn.ParameterList([
+            torch.nn.Parameter(
+                torch.as_tensor(centers, dtype=torch.float32, device=self.device),
+                requires_grad=True,  # explicitly set to True
+            )
+        ])
+        self._widths = torch.nn.ParameterList([
+            torch.nn.Parameter(
+                torch.as_tensor(widths, dtype=torch.float32, device=self.device),
+                requires_grad=True,  # explicitly set to True
+            )
+        ])
         self.use_sparse_tensor = use_sparse_tensor
-        self.mask = torch.nn.Parameter(
-            torch.as_tensor(widths > 0.0, dtype=torch.int8, device=self.device),
-            requires_grad=False,  # explicitly set to False (mask is not trainable)
-        )
+        self._mask = torch.nn.ParameterList([
+            torch.nn.Parameter(
+                torch.as_tensor(widths > 0.0, dtype=torch.int8, device=self.device),
+                requires_grad=False,  # explicitly set to False (mask is not trainable)
+            )
+        ])
         self.labels = labels  # TODO: possibly remove this attribute
 
     @classmethod
     def create(
-        cls, number_of_variables: int, number_of_terms: int, **kwargs
+            cls, number_of_variables: int, number_of_terms: int, **kwargs
     ) -> Union[NoReturn, "ContinuousFuzzySet"]:
         """
         Create a fuzzy set with the given number of variables and terms, where each variable
@@ -132,9 +146,9 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
             True if the fuzzy sets are equal, False otherwise.
         """
         return (
-            isinstance(other, type(self))
-            and torch.equal(self.centers, other.centers)
-            and torch.equal(self.widths, other.widths)
+                isinstance(other, type(self))
+                and torch.equal(self.get_centers(), other.get_centers())
+                and torch.equal(self.get_widths(), other.get_widths())
         )
 
     def __hash__(self):
@@ -144,7 +158,35 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
         Returns:
             The hash of the fuzzy set.
         """
-        return hash((type(self), self.centers, self.widths, self.labels))
+        return hash((type(self), self.get_centers(), self.get_widths(), self.labels))
+
+    def get_centers(self):
+        return torch.cat([param for param in self._centers], dim=-1)
+
+    def get_widths(self):
+        return torch.cat([param for param in self._widths], dim=-1)
+
+    def get_mask(self):
+        return torch.cat([param for param in self._mask], dim=-1)
+
+    # def __getattribute__(self, item):
+    #     if item in ("centers", "widths", "sigmas", "mask"):
+    #         if item == "sigmas":
+    #             item = "widths"
+    #         param_list = self.__dict__["_modules"][item]
+    #         # for params in param_list:
+    #
+    #         if len(param_list) > 0:
+    #             params: List[torch.Tensor] = (
+    #                 []
+    #             )  # the secondary response denoting module filter
+    #             for param in param_list:
+    #                 params.append(param)
+    #             return torch.cat(params, dim=-1)
+    #         raise ValueError(
+    #             f"The torch.nn.ParameterList for {item} of ContinuousFuzzySets is empty."
+    #         )
+    #     return object.__getattribute__(self, item)
 
     @classmethod
     def render_formula(cls) -> sympy.Expr:
@@ -251,28 +293,28 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
     #     if self.widths.nelement() == 1:
     #         self.widths = torch.nn.Parameter(self.widths.reshape(1)).float()
 
-    def extend(self, centers, widths):
-        """
-        Given additional parameters, centers and widths, extend the existing self.centers and
-        self.widths, respectively. Additionally, update the necessary backend logic.
+    # def extend(self, centers, widths):
+    #     """
+    #     Given additional parameters, centers and widths, extend the existing self.centers and
+    #     self.widths, respectively. Additionally, update the necessary backend logic.
+    #
+    #     Args:
+    #         centers: The centers of new fuzzy sets.
+    #         widths: The widths of new fuzzy sets.
+    #
+    #     Returns:
+    #         None
+    #     """
+    #     with torch.no_grad():
+    #         # self.reshape_parameters()
+    #         centers = convert_to_tensor(centers)
+    #         self.centers = torch.nn.Parameter(
+    #             torch.cat([self.centers, centers]).float()
+    #         )
+    #         widths = convert_to_tensor(widths)
+    #         self.widths = torch.nn.Parameter(torch.cat([self.widths, widths]).float())
 
-        Args:
-            centers: The centers of new fuzzy sets.
-            widths: The widths of new fuzzy sets.
-
-        Returns:
-            None
-        """
-        with torch.no_grad():
-            # self.reshape_parameters()
-            centers = convert_to_tensor(centers)
-            self.centers = torch.nn.Parameter(
-                torch.cat([self.centers, centers]).float()
-            )
-            widths = convert_to_tensor(widths)
-            self.widths = torch.nn.Parameter(torch.cat([self.widths, widths]).float())
-
-    def area_helper(self, fuzzy_sets) -> List[float]:
+    def area_helper(self, fuzzy_sets) -> List[List[float]]:
         """
         Splits the fuzzy set (if representing a fuzzy variable) into individual fuzzy sets (the
         fuzzy variable's possible fuzzy terms), and does so recursively until the base case is
@@ -285,35 +327,35 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
         Returns:
             A list of floats.
         """
-        results = []
-        for params in zip(fuzzy_sets.centers, fuzzy_sets.widths):
-            centers, widths = params[0], params[1]
-            fuzzy_set = self.__class__(centers=centers, widths=widths)
+        all_areas = []
+        for variable_params in zip(fuzzy_sets.get_centers(), fuzzy_sets.get_widths()):
+            variable_centers, variable_widths = variable_params[0], variable_params[1]
+            variable_areas = []
+            for term_params in zip(variable_centers, variable_widths):
+                centers, widths = term_params[0].item(), term_params[1].item()
+                fuzzy_set = self.__class__(centers=np.array([centers]), widths=np.array([widths]))
 
-            if centers.ndim > 0:
-                results.append(self.area_helper(fuzzy_set))
-            else:
                 simpson_method = torchquad.Simpson()
-                area = simpson_method.integrate(
+                area: float = simpson_method.integrate(
                     fuzzy_set.calculate_membership,
                     dim=1,
                     N=101,
                     integration_domain=[
                         [
-                            fuzzy_set.centers.item() - fuzzy_set.widths.item(),
-                            fuzzy_set.centers.item() + fuzzy_set.widths.item(),
+                            fuzzy_set.get_centers().item() - fuzzy_set.get_widths().item(),
+                            fuzzy_set.get_centers().item() + fuzzy_set.get_widths().item(),
                         ]
                     ],
-                )
-                if fuzzy_set.widths.item() <= 0 and area != 0.0:
+                ).item()
+                if fuzzy_set.get_widths().item() <= 0 and area != 0.0:
                     # if the width of a fuzzy set is negative or zero, it is a special flag that
                     # the fuzzy set does not exist; thus, the calculated area of a fuzzy set w/ a
                     # width <= 0 should be zero. However, in the case this does not occur,
                     # a zero will substitute to be sure that this issue does not affect results
                     area = 0.0
-                results.append(area)
-
-        return results
+                variable_areas.append(area)
+            all_areas.append(variable_areas)
+        return all_areas
 
     def area(self) -> torch.Tensor:
         """
@@ -329,20 +371,20 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
         """
         return torch.tensor(self.area_helper(self)).float()
 
-    def split(self) -> np.ndarray:
-        """
-        Efficient implementation of splitting *this* (self) fuzzy set, where each row contains the
-        fuzzy sets for a fuzzy variable. For example, if we index the result with [0][1], then we
-        would retrieve the second fuzzy (i.e., linguistic) term for the first fuzzy (i.e.,
-        linguistic) variable.
-
-        Returns:
-            numpy.array
-        """
-        sets = []
-        for center, width in zip(self.centers.flatten(), self.widths.flatten()):
-            sets.append(type(self)(1, center.item(), width.item()))
-        return np.array(sets).reshape(self.centers.shape)
+    # def split(self) -> np.ndarray:
+    #     """
+    #     Efficient implementation of splitting *this* (self) fuzzy set, where each row contains the
+    #     fuzzy sets for a fuzzy variable. For example, if we index the result with [0][1], then we
+    #     would retrieve the second fuzzy (i.e., linguistic) term for the first fuzzy (i.e.,
+    #     linguistic) variable.
+    #
+    #     Returns:
+    #         numpy.array
+    #     """
+    #     sets = []
+    #     for center, width in zip(self.centers.flatten(), self.widths.flatten()):
+    #         sets.append(type(self)(1, center.item(), width.item()))
+    #     return np.array(sets).reshape(self.centers.shape)
 
     def split_by_variables(self) -> Union[list, List[Type["ContinuousFuzzySet"]]]:
         """
@@ -357,7 +399,7 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
             of input dimensions.
         """
         variables = []
-        for centers, widths in zip(self.centers, self.widths):
+        for centers, widths in zip(self.get_centers(), self.get_widths()):
             centers = centers.cpu().detach().tolist()
             widths = widths.cpu().detach().tolist()
 
@@ -439,11 +481,11 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
                         continue  # not a real fuzzy set
                     y_values = memberships[:, variable_idx, term_idx]
                     label: str = (
-                        r"$\mu_{"
-                        + str(variable_idx + 1)
-                        + ","
-                        + str(term_idx + 1)
-                        + "}$"
+                            r"$\mu_{"
+                            + str(variable_idx + 1)
+                            + ","
+                            + str(term_idx + 1)
+                            + "}$"
                     )
                     if (variable_idx, term_idx) in selected_terms:
                         # edgecolor="#0bafa9"  # beautiful with facecolor=None  (AAMAS 2023)
@@ -476,7 +518,7 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
         """
         return np.array(
             [
-                params.centers.size(dim=0) if params.centers.dim() > 0 else 0
+                params.get_centers().size(dim=-1) if params.get_centers().dim() > 0 else 0
                 for params in granules
             ],
             dtype=np.int8,
@@ -484,7 +526,7 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
 
     @staticmethod
     def stack(
-        granules: List[Type["ContinuousFuzzySet"]],
+            granules: List[Type["ContinuousFuzzySet"]],
     ) -> "ContinuousFuzzySet":
         """
         Create a condensed and stacked representation of the given granules.
@@ -504,16 +546,16 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
             [
                 (
                     torch.nn.functional.pad(
-                        params.centers,
+                        params.get_centers(),
                         pad=(
                             0,
                             ContinuousFuzzySet.count_granule_terms(granules).max()
-                            - params.centers.shape[0],
+                            - params.get_centers().shape[0],
                         ),
                         mode="constant",
                         value=missing_center,
                     )
-                    if params.centers.dim() > 0
+                    if params.get_centers().dim() > 0
                     else torch.tensor(missing_center).repeat(
                         ContinuousFuzzySet.count_granule_terms(granules).max()
                     )
@@ -525,16 +567,16 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
             [
                 (
                     torch.nn.functional.pad(
-                        params.widths,
+                        params.get_widths(),
                         pad=(
                             0,
                             ContinuousFuzzySet.count_granule_terms(granules).max()
-                            - params.widths.shape[0],
+                            - params.get_widths().shape[0],
                         ),
                         mode="constant",
                         value=missing_width,
                     )
-                    if params.centers.dim() > 0
+                    if params.get_centers().dim() > 0
                     else torch.tensor(missing_center).repeat(
                         ContinuousFuzzySet.count_granule_terms(granules).max()
                     )
@@ -548,6 +590,7 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
         return mf_type(
             centers=centers.cpu().detach().numpy(),
             widths=widths.cpu().detach().numpy(),
+            device=centers.device,
         )
 
     @classmethod
