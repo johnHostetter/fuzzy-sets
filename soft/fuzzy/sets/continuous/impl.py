@@ -97,8 +97,8 @@ class LogGaussian(ContinuousFuzzySet):
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
         return LogGaussian.internal_calculate_membership(
             observations=observations,
-            centers=self.centers,
-            widths=self.widths,
+            centers=self.get_centers(),
+            widths=self.get_widths(),
             width_multiplier=self.width_multiplier,
         )
 
@@ -117,7 +117,7 @@ class LogGaussian(ContinuousFuzzySet):
         return Membership(
             elements=observations,
             degrees=degrees.to_sparse() if self.use_sparse_tensor else degrees,
-            mask=self.mask,
+            mask=self.get_mask(),
         )
 
 
@@ -181,8 +181,8 @@ class Gaussian(LogGaussian):
         )
 
     def forward(self, observations) -> Membership:
-        # if observations.ndim <= self.get_centers().ndim:
-        #     observations = observations.unsqueeze(dim=-1)
+        if observations.ndim <= self.get_centers().ndim:
+            observations = observations.unsqueeze(dim=-1)
         degrees: torch.Tensor = self.calculate_membership(observations)
 
         assert (
@@ -270,11 +270,11 @@ class Lorentzian(ContinuousFuzzySet):
 
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
         return Lorentzian.internal_calculate_membership(
-            observations=observations, centers=self.centers, widths=self.widths
+            observations=observations, centers=self.get_centers(), widths=self.get_widths()
         )
 
     def forward(self, observations) -> Membership:
-        if observations.ndim <= self.centers.ndim:
+        if observations.ndim <= self.get_centers().ndim:
             observations = observations.unsqueeze(dim=-1)
         degrees: torch.Tensor = self.calculate_membership(observations)
 
@@ -288,7 +288,7 @@ class Lorentzian(ContinuousFuzzySet):
         return Membership(
             elements=observations,
             degrees=degrees.to_sparse() if self.use_sparse_tensor else degrees,
-            mask=self.mask,
+            mask=self.get_mask(),
         )
 
 

@@ -217,10 +217,16 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
         """
         Save the fuzzy set to a file.
 
+        Note: This does not preserve the ParameterList structure, but rather concatenates the
+        parameters into a single tensor, which is then saved to a file.
+
         Returns:
             None
         """
         state_dict: MutableMapping = self.state_dict()
+        state_dict["centers"] = self.get_centers()  # concatenate the centers
+        state_dict["widths"] = self.get_widths()  # concatenate the widths
+        state_dict["mask"] = self.get_mask()  # currently not used
         state_dict["labels"] = self.labels
         state_dict["class_name"] = self.__class__.__name__
         if ".pt" not in path.name and ".pth" not in path.name:
@@ -550,7 +556,7 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
                         pad=(
                             0,
                             ContinuousFuzzySet.count_granule_terms(granules).max()
-                            - params.get_centers().shape[0],
+                            - params.get_centers().shape[-1],
                         ),
                         mode="constant",
                         value=missing_center,
@@ -571,7 +577,7 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
                         pad=(
                             0,
                             ContinuousFuzzySet.count_granule_terms(granules).max()
-                            - params.get_widths().shape[0],
+                            - params.get_widths().shape[-1],
                         ),
                         mode="constant",
                         value=missing_width,

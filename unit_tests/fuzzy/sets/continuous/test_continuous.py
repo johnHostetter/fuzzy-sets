@@ -69,9 +69,9 @@ class TestContinuousFuzzySet(unittest.TestCase):
             # check that the parameters and members are the same
             assert membership_func == loaded_membership_func
             assert torch.allclose(
-                membership_func.centers, loaded_membership_func.centers
+                membership_func.get_centers(), loaded_membership_func.get_centers()
             )
-            assert torch.allclose(membership_func.widths, loaded_membership_func.widths)
+            assert torch.allclose(membership_func.get_widths(), loaded_membership_func.get_widths())
             if (
                 type(subclass) == Gaussian
             ):  # Gaussian has an additional parameter (alias for widths)
