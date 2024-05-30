@@ -5,8 +5,8 @@ Utility functions, such as for getting the powerset of an iterable.
 import inspect
 from pathlib import Path
 from collections.abc import Iterable
+from typing import Dict, Any, Set, Union
 from itertools import chain, combinations
-from typing import Dict, Any, List, Set, Union
 
 import torch
 import numpy as np

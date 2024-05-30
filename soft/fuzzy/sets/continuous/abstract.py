@@ -82,7 +82,8 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
             # ensure that the centers are a numpy array (done for consistency)
             # specifically, we want to internally control the dtype and device of the centers
             raise ValueError(
-                f"The centers of a ContinuousFuzzySet must be a numpy array, but got {type(centers)}"
+                f"The centers of a ContinuousFuzzySet must be a numpy array, "
+                f"but got {type(centers)}"
             )
         if not isinstance(widths, np.ndarray):
             # ensure that the widths are a numpy array (done for consistency)
@@ -200,33 +201,32 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
         """
         return hash((type(self), self.get_centers(), self.get_widths(), self.labels))
 
-    def get_centers(self):
-        return torch.cat([param for param in self._centers], dim=-1)
+    def get_centers(self) -> torch.Tensor:
+        """
+        Get the concatenated centers of the fuzzy set from its corresponding ParameterList.
 
-    def get_widths(self):
-        return torch.cat([param for param in self._widths], dim=-1)
+        Returns:
+            The concatenated centers of the fuzzy set.
+        """
+        return torch.cat(list(self._centers), dim=-1)
 
-    def get_mask(self):
-        return torch.cat([param for param in self._mask], dim=-1)
+    def get_widths(self) -> torch.Tensor:
+        """
+        Get the concatenated widths of the fuzzy set from its corresponding ParameterList.
 
-    # def __getattribute__(self, item):
-    #     if item in ("centers", "widths", "sigmas", "mask"):
-    #         if item == "sigmas":
-    #             item = "widths"
-    #         param_list = self.__dict__["_modules"][item]
-    #         # for params in param_list:
-    #
-    #         if len(param_list) > 0:
-    #             params: List[torch.Tensor] = (
-    #                 []
-    #             )  # the secondary response denoting module filter
-    #             for param in param_list:
-    #                 params.append(param)
-    #             return torch.cat(params, dim=-1)
-    #         raise ValueError(
-    #             f"The torch.nn.ParameterList for {item} of ContinuousFuzzySets is empty."
-    #         )
-    #     return object.__getattribute__(self, item)
+        Returns:
+            The concatenated widths of the fuzzy set.
+        """
+        return torch.cat(list(self._widths), dim=-1)
+
+    def get_mask(self) -> torch.Tensor:
+        """
+        Get the concatenated mask of the fuzzy set from its corresponding ParameterList.
+
+        Returns:
+            The concatenated mask of the fuzzy set.
+        """
+        return torch.cat(list(self._mask), dim=-1)
 
     @classmethod
     def render_formula(cls) -> sympy.Expr:
@@ -325,23 +325,13 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
         labels = state_dict.pop("labels")
         class_name = state_dict.pop("class_name")
         return cls.get_subclass(class_name)(
-            centers=centers, widths=widths, labels=labels, device=device
+            centers=centers.cpu().detach().numpy(),
+            widths=widths.cpu().detach().numpy(),
+            labels=labels,
+            device=device,
         )
 
-    # def reshape_parameters(self):
-    #     """
-    #     Reshape the parameters of the fuzzy set (e.g., centers, widths) so that they are
-    #     the correct shape for subsequent operations.
-    #
-    #     Returns:
-    #         None
-    #     """
-    #     if self.centers.nelement() == 1:
-    #         self.centers = torch.nn.Parameter(self.centers.reshape(1)).float()
-    #     if self.widths.nelement() == 1:
-    #         self.widths = torch.nn.Parameter(self.widths.reshape(1)).float()
-
-    def extend(self, centers, widths):
+    def extend(self, centers, widths, mode: str):
         """
         Given additional parameters, centers and widths, extend the existing self.centers and
         self.widths, respectively. Additionally, update the necessary backend logic.
@@ -353,15 +343,22 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
         Returns:
             None
         """
+        if mode == "vertical":
+            method_of_extension: callable = torch.cat
+        elif mode == "horizontal":
+            method_of_extension: callable = torch.hstack
+        else:
+            raise ValueError(
+                f"The mode must be either 'horizontal' or 'vertical', but got {mode}"
+            )
         with torch.no_grad():
-            # self.reshape_parameters()
             centers = convert_to_tensor(centers)
             self._centers[0] = torch.nn.Parameter(
-                torch.hstack([self._centers[0], centers])
+                method_of_extension([self._centers[0], centers])
             )
             widths = convert_to_tensor(widths)
             self._widths[0] = torch.nn.Parameter(
-                torch.hstack([self._widths[0], widths])
+                method_of_extension([self._widths[0], widths])
             )
 
     def area_helper(self, fuzzy_sets) -> List[List[float]]:
@@ -433,21 +430,6 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
         return torch.tensor(
             self.area_helper(self), device=self.device, dtype=torch.float32
         )
-
-    # def split(self) -> np.ndarray:
-    #     """
-    #     Efficient implementation of splitting *this* (self) fuzzy set, where each row contains the
-    #     fuzzy sets for a fuzzy variable. For example, if we index the result with [0][1], then we
-    #     would retrieve the second fuzzy (i.e., linguistic) term for the first fuzzy (i.e.,
-    #     linguistic) variable.
-    #
-    #     Returns:
-    #         numpy.array
-    #     """
-    #     sets = []
-    #     for center, width in zip(self.centers.flatten(), self.widths.flatten()):
-    #         sets.append(type(self)(1, center.item(), width.item()))
-    #     return np.array(sets).reshape(self.centers.shape)
 
     def split_by_variables(self) -> Union[list, List[Type["ContinuousFuzzySet"]]]:
         """
@@ -670,59 +652,6 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
             A sympy.Expr object that represents the membership function of the fuzzy set.
         """
         raise NotImplementedError("The sympy_formula method must be implemented.")
-
-    # @abc.abstractmethod
-    # def calculate_membership(
-    #     self, observations: torch.Tensor
-    # ) -> Union[NoReturn, torch.Tensor]:
-    #     """
-    #     Calculate the membership of an element to this fuzzy set; not implemented as this is a
-    #     generic and abstract class. This method is overridden by a class that specifies the type
-    #     of fuzzy set (e.g., Gaussian, Triangular).
-    #
-    #     Args:
-    #         observations: Two-dimensional matrix of observations, where a row is a single
-    #         observation and each column is related to an attribute measured during that observation.
-    #
-    #     Returns:
-    #         None
-    #     """
-    #     raise NotImplementedError(
-    #         "The ContinuousFuzzySet has no defined membership function. Please create a class and "
-    #         "inherit from ContinuousFuzzySet, or use a predefined class, such as Gaussian."
-    #     )
-
-    # def default_forward(self, observations) -> Membership:
-    #     """
-    #     Forward pass of the function. Applies the function to the input elementwise. The
-    #     __internal_forward method is used to calculate the membership degrees of the observations
-    #     for ContinuousFuzzySet objects. The forward is not directly implemented as the
-    #     self.calculate_membership is abstract and must be implemented by the subclass, and by not
-    #     implementing the forward method, this allows the subclasses to be compatible with
-    #     torch.jit.script.
-    #
-    #     Args:
-    #         observations: Two-dimensional matrix of observations,
-    #
-    #     Returns:
-    #         The membership degrees of the observations for the continuous fuzzy set.
-    #     """
-    #     if observations.ndim <= self.centers.ndim:
-    #         observations = observations.unsqueeze(dim=-1)
-    #     degrees: torch.Tensor = self.calculate_membership(observations)
-    #
-    #     assert (
-    #         not degrees.isnan().any()
-    #     ), "NaN values detected in the membership degrees."
-    #     assert (
-    #         not degrees.isinf().any()
-    #     ), "Infinite values detected in the membership degrees."
-    #
-    #     return Membership(
-    #         elements=observations,
-    #         degrees=degrees.to_sparse() if self.use_sparse_tensor else degrees,
-    #         mask=self.mask,
-    #     )
 
     @abc.abstractmethod
     def forward(self, observations) -> Membership:

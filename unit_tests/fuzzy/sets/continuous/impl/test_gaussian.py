@@ -107,7 +107,10 @@ class TestGaussian(unittest.TestCase):
             torch.tensor(centers, device=AVAILABLE_DEVICE).float(),
         )
         # the outputs of the PyTorch and Numpy versions should be approx. equal
-        assert np.allclose(mu_pytorch.cpu().detach().numpy(), mu_numpy)
+        # note that the PyTorch version has an extra dimension (4, 1, 1) compared to Numpy's (4, 1)
+        assert np.allclose(
+            mu_pytorch.cpu().detach().numpy().flatten(), mu_numpy.flatten()
+        )
 
         # test that this is compatible with torch.jit.script
         gaussian_mf_scripted = torch.jit.script(gaussian_mf)
@@ -293,7 +296,7 @@ class TestGaussian(unittest.TestCase):
                 ],
             ]
         )
-        sigmas = np.array([0.1, 0.25, 0.5])  # negative widths are missing sets
+        sigmas = np.array([[[0.1, 0.25, 0.5]]])  # negative widths are missing sets
         gaussian_mf = Gaussian(
             centers=centers,
             widths=sigmas,
@@ -404,7 +407,7 @@ class TestGaussian(unittest.TestCase):
             gaussian_mf.get_widths().cpu().detach().numpy(),
         )
         mu_pytorch = gaussian_mf(
-            torch.tensor(element[0], device=AVAILABLE_DEVICE)
+            torch.tensor(element, device=AVAILABLE_DEVICE)
         ).degrees.to_dense()
         assert np.allclose(
             mu_pytorch.cpu().detach().numpy(), target_membership_degrees, atol=1e-1

@@ -15,10 +15,6 @@ from typing import List, Tuple, Any, Dict, Set, Type, Union
 import torch
 from natsort import natsorted
 
-from soft.fuzzy.sets.continuous.impl import LogGaussian
-
-# from scipy.signal import find_peaks
-
 from soft.utilities.functions import (
     get_object_attributes,
     find_widths,
