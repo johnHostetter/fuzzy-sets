@@ -462,6 +462,7 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
                 type(self)(
                     centers=np.array(trimmed_centers),
                     widths=np.array(trimmed_widths),
+                    device=self.device,
                 )
             )
 
