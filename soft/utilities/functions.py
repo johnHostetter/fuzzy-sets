@@ -43,9 +43,7 @@ def all_subclasses(cls) -> Set[Any]:
     return {cls}.union(s for c in cls.__subclasses__() for s in all_subclasses(c))
 
 
-def find_centers_and_widths(
-    data_point, minimums, maximums, alpha: float
-) -> torch.Tensor:
+def find_widths(data_point, minimums, maximums, alpha: float) -> torch.Tensor:
     """
     Find the centers and widths to be used for a newly created fuzzy set.
 

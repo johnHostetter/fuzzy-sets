@@ -78,6 +78,31 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
         else:
             self.device = device
 
+        if not isinstance(centers, np.ndarray):
+            # ensure that the centers are a numpy array (done for consistency)
+            # specifically, we want to internally control the dtype and device of the centers
+            raise ValueError(
+                f"The centers of a ContinuousFuzzySet must be a numpy array, but got {type(centers)}"
+            )
+        if not isinstance(widths, np.ndarray):
+            # ensure that the widths are a numpy array (done for consistency)
+            # specifically, we want to internally control the dtype and device of the widths
+            raise ValueError(
+                f"The widths of a ContinuousFuzzySet must be a numpy array, but got {type(widths)}"
+            )
+
+        if centers.ndim != widths.ndim:
+            raise ValueError(
+                f"The number of dimensions for the centers ({centers.ndim}) and widths "
+                f"({widths.ndim}) must be the same."
+            )
+
+        if centers.ndim == 0 or widths.ndim == 0:
+            raise ValueError(
+                f"The centers and widths of a ContinuousFuzzySet must have at least one dimension. "
+                f"Centers has {centers.ndim} dimensions and widths has {widths.ndim} dimensions."
+            )
+
         if centers.ndim == 1:
             # assuming that the array is a single linguistic variable
             centers = centers[None, :]
@@ -316,26 +341,28 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
     #     if self.widths.nelement() == 1:
     #         self.widths = torch.nn.Parameter(self.widths.reshape(1)).float()
 
-    # def extend(self, centers, widths):
-    #     """
-    #     Given additional parameters, centers and widths, extend the existing self.centers and
-    #     self.widths, respectively. Additionally, update the necessary backend logic.
-    #
-    #     Args:
-    #         centers: The centers of new fuzzy sets.
-    #         widths: The widths of new fuzzy sets.
-    #
-    #     Returns:
-    #         None
-    #     """
-    #     with torch.no_grad():
-    #         # self.reshape_parameters()
-    #         centers = convert_to_tensor(centers)
-    #         self.centers = torch.nn.Parameter(
-    #             torch.cat([self.centers, centers]).float()
-    #         )
-    #         widths = convert_to_tensor(widths)
-    #         self.widths = torch.nn.Parameter(torch.cat([self.widths, widths]).float())
+    def extend(self, centers, widths):
+        """
+        Given additional parameters, centers and widths, extend the existing self.centers and
+        self.widths, respectively. Additionally, update the necessary backend logic.
+
+        Args:
+            centers: The centers of new fuzzy sets.
+            widths: The widths of new fuzzy sets.
+
+        Returns:
+            None
+        """
+        with torch.no_grad():
+            # self.reshape_parameters()
+            centers = convert_to_tensor(centers)
+            self._centers[0] = torch.nn.Parameter(
+                torch.hstack([self._centers[0], centers])
+            )
+            widths = convert_to_tensor(widths)
+            self._widths[0] = torch.nn.Parameter(
+                torch.hstack([self._widths[0], widths])
+            )
 
     def area_helper(self, fuzzy_sets) -> List[List[float]]:
         """

@@ -21,7 +21,7 @@ from soft.fuzzy.sets.continuous.impl import LogGaussian
 
 from soft.utilities.functions import (
     get_object_attributes,
-    find_centers_and_widths,
+    find_widths,
 )
 from soft.fuzzy.sets.continuous.abstract import ContinuousFuzzySet, Membership
 
@@ -308,7 +308,7 @@ class GroupedFuzzySets(torch.nn.Module):
 
                 if not new_centers.isnan().all():  # add new centers
                     # TODO: this find_centers_and_widths call is problematic
-                    new_widths: torch.Tensor = find_centers_and_widths(
+                    new_widths: torch.Tensor = find_widths(
                         data_point=new_centers.nan_to_num(0.0).mean(dim=0),
                         minimums=self.minimums,
                         maximums=self.maximums,
