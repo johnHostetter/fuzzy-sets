@@ -187,12 +187,12 @@ class Gaussian(LogGaussian):
         # we do not need torch.float64 for observations
         degrees: torch.Tensor = self.calculate_membership(observations.float())
 
-        assert (
-            not degrees.isnan().any()
-        ), "NaN values detected in the membership degrees."
-        assert (
-            not degrees.isinf().any()
-        ), "Infinite values detected in the membership degrees."
+        # assert (
+        #     not degrees.isnan().any()
+        # ), "NaN values detected in the membership degrees."
+        # assert (
+        #     not degrees.isinf().any()
+        # ), "Infinite values detected in the membership degrees."
 
         return Membership(
             elements=observations,

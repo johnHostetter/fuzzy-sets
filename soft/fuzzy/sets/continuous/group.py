@@ -55,14 +55,16 @@ class GroupedFuzzySets(torch.nn.Module):
 
     def __getattribute__(self, item):
         try:
-            if item in ("centers", "widths", "sigmas"):
+            if item in ("centers", "widths", "mask"):
                 modules_list = self.__dict__["_modules"]["modules_list"]
                 if len(modules_list) > 0:
                     module_attributes: List[torch.Tensor] = (
                         []
                     )  # the secondary response denoting module filter
                     for module in modules_list:
-                        module_attributes.append(getattr(module, item))
+                        # get the method for the module and then call it
+                        item_method: callable = getattr(module, f"get_{item}")
+                        module_attributes.append(item_method())
                     return torch.cat(module_attributes, dim=-1)
                 raise ValueError(
                     "The torch.nn.ModuleList of GroupedFuzzySets is empty."
