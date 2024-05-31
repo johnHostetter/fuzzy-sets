@@ -20,8 +20,8 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from torchquad.utils.set_up_backend import set_up_backend
 
+from soft.utilities.functions import all_subclasses
 from soft.utilities.reproducibility import path_to_project_root
-from soft.utilities.functions import convert_to_tensor, all_subclasses
 
 
 class Membership(
@@ -331,7 +331,7 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
             device=device,
         )
 
-    def extend(self, centers, widths, mode: str):
+    def extend(self, centers: torch.Tensor, widths: torch.Tensor, mode: str):
         """
         Given additional parameters, centers and widths, extend the existing self.centers and
         self.widths, respectively. Additionally, update the necessary backend logic.
@@ -352,11 +352,9 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
                 f"The mode must be either 'horizontal' or 'vertical', but got {mode}"
             )
         with torch.no_grad():
-            centers = convert_to_tensor(centers)
             self._centers[0] = torch.nn.Parameter(
                 method_of_extension([self._centers[0], centers])
             )
-            widths = convert_to_tensor(widths)
             self._widths[0] = torch.nn.Parameter(
                 method_of_extension([self._widths[0], widths])
             )
