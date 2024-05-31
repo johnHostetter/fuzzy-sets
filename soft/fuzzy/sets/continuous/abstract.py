@@ -574,7 +574,7 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
 
     @staticmethod
     def stack(
-        granules: List[Type["ContinuousFuzzySet"]],
+        granules: List["ContinuousFuzzySet"],
     ) -> "ContinuousFuzzySet":
         """
         Create a condensed and stacked representation of the given granules.

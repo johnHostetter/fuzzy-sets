@@ -5,7 +5,7 @@ Implements the t-norm fuzzy relations.
 import torch
 
 
-class AlgebraicProduct(torch.nn.Module):
+class AlgebraicProduct(torch.nn.Module):  # TODO: remove this class
     """
     Implementation of the Algebraic Product t-norm (Fuzzy AND).
     """
@@ -43,13 +43,3 @@ class AlgebraicProduct(torch.nn.Module):
             torch.abs(self.importance)
         )  # importance can only be [0, 1]
         return torch.prod(torch.mul(elements, self.importance))
-
-
-class Minimum:
-    # pylint: disable=too-few-public-methods
-    """
-    A placeholder class for operations expecting the minimum t-norm.
-    """
-
-    def __init__(self):
-        pass
