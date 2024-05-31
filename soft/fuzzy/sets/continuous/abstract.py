@@ -479,7 +479,7 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
             selected_terms = []
 
         with plt.style.context(["science", "no-latex", "high-contrast"]):
-            for variable_idx in range(self.centers.shape[0]):
+            for variable_idx in range(self.get_centers().shape[0]):
                 _, ax = plt.subplots(1, figsize=(6, 4), dpi=100)
                 mpl.rcParams["figure.figsize"] = (6, 4)
                 mpl.rcParams["figure.dpi"] = 100
@@ -492,13 +492,13 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
                 plt.xticks(fontsize=20)
                 plt.yticks(fontsize=20)
                 real_centers: List[float] = [
-                    self.centers[variable_idx, term_idx].item()
-                    for term_idx, mask_value in enumerate(self.mask[variable_idx])
+                    self.get_centers()[variable_idx, term_idx].item()
+                    for term_idx, mask_value in enumerate(self.get_mask()[variable_idx])
                     if mask_value == 1
                 ]
                 real_widths: List[float] = [
-                    self.widths[variable_idx, term_idx].item()
-                    for term_idx, mask_value in enumerate(self.mask[variable_idx])
+                    self.get_widths()[variable_idx, term_idx].item()
+                    for term_idx, mask_value in enumerate(self.get_mask()[variable_idx])
                     if mask_value == 1
                 ]
                 x_values = torch.linspace(
@@ -507,9 +507,9 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
                     1000,
                 )
 
-                if self.centers.ndim == 1 or self.centers.shape[0] == 1:
+                if self.get_centers().ndim == 1 or self.get_centers().shape[0] == 1:
                     x_values = x_values[:, None]
-                elif self.centers.ndim == 2 or self.centers.shape[0] > 1:
+                elif self.get_centers().ndim == 2 or self.get_centers().shape[0] > 1:
                     x_values = x_values[:, None, None]
 
                 memberships: torch.Tensor = self.calculate_membership(x_values)
@@ -523,7 +523,7 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
                 x_values = x_values.squeeze().detach().numpy()
 
                 for term_idx in range(memberships.shape[-1]):
-                    if self.mask[variable_idx, term_idx] == 0:
+                    if self.get_mask()[variable_idx, term_idx] == 0:
                         continue  # not a real fuzzy set
                     y_values = memberships[:, variable_idx, term_idx]
                     label: str = (
