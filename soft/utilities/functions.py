@@ -9,7 +9,6 @@ from typing import Dict, Any, Set, Union
 from itertools import chain, combinations
 
 import torch
-import numpy as np
 from natsort import natsorted  # sorts lists "naturally"
 
 from soft.utilities.reproducibility import path_to_project_root
@@ -100,21 +99,6 @@ def regulator(sigma_1: torch.Tensor, sigma_2: torch.Tensor) -> torch.Tensor:
         Gaussian membership function is not warped.
     """
     return (1 / 2) * (sigma_1 + sigma_2)
-
-
-def convert_to_tensor(values: np.ndarray) -> torch.Tensor:
-    """
-    If the given values are not torch.Tensor, convert them to torch.Tensor.
-
-    Args:
-        values: Values such as the centers or widths of a fuzzy set.
-
-    Returns:
-        torch.tensor(np.array(values))
-    """
-    if isinstance(values, torch.Tensor):
-        return values
-    return torch.tensor(np.array(values)).float()
 
 
 def get_object_attributes(obj_instance) -> Dict[str, Any]:
