@@ -502,7 +502,8 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
                 x_values = torch.linspace(
                     min(real_centers) - 2 * max(real_widths),
                     max(real_centers) + 2 * max(real_widths),
-                    1000,
+                    steps=1000,
+                    device=self.device,
                 )
 
                 if self.get_centers().ndim == 1 or self.get_centers().shape[0] == 1:
@@ -517,8 +518,8 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
                         dim=1
                     )  # add a temporary dimension for the variable
 
-                memberships = memberships.detach().numpy()
-                x_values = x_values.squeeze().detach().numpy()
+                memberships = memberships.cpu().detach().numpy()
+                x_values = x_values.squeeze().cpu().detach().numpy()
 
                 for term_idx in range(memberships.shape[-1]):
                     if self.get_mask()[variable_idx, term_idx] == 0:
