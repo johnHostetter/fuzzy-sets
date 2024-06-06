@@ -113,32 +113,64 @@ class ContinuousFuzzySet(torch.nn.Module, metaclass=abc.ABCMeta):
 
         # avoid allocating new memory for the centers and widths
         # use torch.float32 to save memory and speed up computations
-        self._centers = torch.nn.ParameterList(
-            [
-                torch.nn.Parameter(
-                    torch.as_tensor(centers, dtype=torch.float32, device=self.device),
-                    requires_grad=True,  # explicitly set to True
-                )
-            ]
-        )
-        self._widths = torch.nn.ParameterList(
-            [
-                torch.nn.Parameter(
-                    torch.as_tensor(widths, dtype=torch.float32, device=self.device),
-                    requires_grad=True,  # explicitly set to True
-                )
-            ]
-        )
+        self._centers = torch.nn.ParameterList([self.make_parameter(centers)])
+        self._widths = torch.nn.ParameterList([self.make_parameter(widths)])
         self.use_sparse_tensor = use_sparse_tensor
-        self._mask = torch.nn.ParameterList(
-            [
-                torch.nn.Parameter(
-                    torch.as_tensor(widths > 0.0, dtype=torch.int8, device=self.device),
-                    requires_grad=False,  # explicitly set to False (mask is not trainable)
-                )
-            ]
-        )
+        # self._mask = torch.nn.ParameterList(
+        #     [
+        #         self.make_mask(widths)
+        #     ]
+        # )
+        self._mask = [self.make_mask(widths)]
         self.labels = labels  # TODO: possibly remove this attribute
+
+    def to(self, *args, **kwargs):
+        """
+        Move the ContinuousFuzzySet to a new device.
+
+        Returns:
+            None
+        """
+        # Call the parent class's `to` method to handle parameters and submodules
+        super().to(*args, **kwargs)
+
+        # special handling for the non-parameter tensors, such as mask
+        self._mask = [mask.to(*args, **kwargs) for mask in self._mask]
+        return self
+
+    def make_parameter(self, parameter: np.ndarray) -> torch.nn.Parameter:
+        """
+        Create a torch.nn.Parameter from a numpy array, with the appropriate dtype and device.
+
+        Args:
+            parameter: The numpy array to convert to a torch.nn.Parameter (e.g., centers or widths).
+
+        Returns:
+            A torch.nn.Parameter object.
+        """
+        return torch.nn.Parameter(
+            torch.as_tensor(parameter, dtype=torch.float32, device=self.device),
+            requires_grad=True,  # explicitly set to True
+        )
+
+    def make_mask(self, widths: np.ndarray) -> torch.nn.Parameter:
+        """
+        Create a mask for the fuzzy set, where the mask is used to filter out fuzzy sets that are
+        not real. This is particularly useful when the fuzzy set is not fully defined, and some
+        fuzzy sets are missing. The mask is a binary tensor that is used to filter out fuzzy sets
+        that are not real. If the mask is 0, then the fuzzy set is not real; otherwise, it is real.
+
+        Args:
+            widths: The widths of the fuzzy set.
+
+        Returns:
+            A torch.nn.Parameter object.
+        """
+        return torch.as_tensor(widths > 0.0, dtype=torch.int8, device=self.device)
+        # return torch.nn.Parameter(
+        #     torch.as_tensor(widths > 0.0, dtype=torch.int8, device=self.device),
+        #     requires_grad=False,  # explicitly set to False (mask is not trainable)
+        # )
 
     @classmethod
     def create(

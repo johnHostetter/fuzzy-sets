@@ -329,25 +329,37 @@ class GroupedFuzzySets(torch.nn.Module):
                     # above result is tensor that contains new centers, but also contains torch.nan
                     # in the places where a new center is not needed
 
+                    new_centers = (
+                        new_centers.nan_to_num(0.0)
+                        .transpose(0, 1)
+                        .max(dim=-1, keepdim=True)
+                        .values
+                    )
+                    new_widths = (
+                        new_widths.transpose(0, 1).max(dim=-1, keepdim=True).values
+                    )
+
                     # TODO: this code does not work for torch.jit.script
-                    module_type = type(self.modules_list[0])  # cannot call type
-                    if issubclass(module_type, ContinuousFuzzySet):
-                        # cannot call .get_subclass
-                        granule = ContinuousFuzzySet.get_subclass(module_type.__name__)(
-                            centers=new_centers.nan_to_num(0.0)
-                            .transpose(0, 1)
-                            .max(dim=-1, keepdim=True)
-                            .values,
-                            widths=new_widths.transpose(0, 1)
-                            .max(dim=-1, keepdim=True)
-                            .values,
-                            device=self.data_seen.device,
-                        )  # cannot dynamically create a PyTorch module in torch.jit.script
-                    else:
-                        raise ValueError(
-                            "The module type is not ContinuousFuzzySet, and therefore cannot "
-                            "be used for dynamic expansion."
-                        )
+                    # the following assumes only the first module is to be expanded
+                    module = self.modules_list[0]
+                    module._centers.append(module.make_parameter(parameter=new_centers))
+                    module._widths.append(module.make_parameter(parameter=new_widths))
+                    module._mask.append(module.make_mask(widths=new_widths))
+
+                    # TODO: this code does not work for torch.jit.script
+                    # the following assumes an entire new module is to be added
+                    # module_type = type(self.modules_list[0])  # cannot call type
+                    # if issubclass(module_type, ContinuousFuzzySet):
+                    #     # cannot call .get_subclass
+                    #     granule = ContinuousFuzzySet.get_subclass(module_type.__name__)(
+                    #         centers=new_centers,
+                    #         widths=new_widths,
+                    #     )  # cannot dynamically create a PyTorch module in torch.jit.script
+                    # else:
+                    #     raise ValueError(
+                    #         "The module type is not ContinuousFuzzySet, and therefore cannot "
+                    #         "be used for dynamic expansion."
+                    #     )
 
                     # granule = LogGaussian(
                     #     centers=new_centers.nan_to_num(0.0)
@@ -359,18 +371,18 @@ class GroupedFuzzySets(torch.nn.Module):
                     #     .values,
                     #     device=self.data_seen.device
                     # )
-                    print(
-                        f"add {granule.centers.shape}; modules already: {len(self.modules_list)}"
-                    )
+                    # print(
+                    #     f"add {granule.centers.shape}; modules already: {len(self.modules_list)}"
+                    # )
                     # print(f"to dimensions: {set(range(len(sets))) - set(empty_sets)}")
-                    self.modules_list.add_module(str(len(self.modules_list)), granule)
+                    # self.modules_list.add_module(str(len(self.modules_list)), granule)
 
                     # clear the history
                     self.data_seen = torch.empty(0, 0)
 
                     # reduce the number of torch.nn.Modules in the list for computational efficiency
                     # (this is not necessary, but it is a good idea)
-                    self.prune(module_type)
+                    # self.prune(module_type)
 
             (
                 _,
@@ -392,12 +404,10 @@ class GroupedFuzzySets(torch.nn.Module):
         Returns:
             The peaks, or a subset of the peaks if there are more than max_peaks.
         """
-        # numpy_data = data.detach().cpu()#.numpy()
-        # peak_indices = GroupedFuzzySets.find_peaks(data)
         # Find the peaks in a 1D tensor
         peaks = (data[1:-1] > data[:-2]) & (data[1:-1] > data[2:])
         peak_indices = torch.nonzero(peaks).squeeze() + 1
-        if len(peak_indices) <= max_peaks:
+        if peak_indices.ndim > 0 and len(peak_indices) <= max_peaks:
             sampled_peak_values = data[peak_indices][
                 :, None
             ]  # return the peaks' values
@@ -410,13 +420,6 @@ class GroupedFuzzySets(torch.nn.Module):
         return torch.as_tensor(
             sampled_peak_values, dtype=torch.float16, device=data.device
         )
-
-    # @staticmethod
-    # def find_peaks(tensor_data: torch.Tensor) -> torch.Tensor:
-    #     # Find the peaks in a 1D tensor
-    #     peaks = (tensor_data[1:-1] > tensor_data[:-2]) & (tensor_data[1:-1] > tensor_data[2:])
-    #     peak_indices = torch.nonzero(peaks).squeeze() + 1
-    #     return peak_indices
 
     def prune(self, module_type: Type[ContinuousFuzzySet]) -> None:
         """
@@ -457,7 +460,8 @@ class GroupedFuzzySets(torch.nn.Module):
             module_masks,
         ) = self.calculate_module_responses(observations)
 
-        self.expand(observations, module_responses, module_masks)
+        # TODO: this code does not work for torch.jit.script
+        # self.expand(observations, module_responses, module_masks)
 
         return Membership(
             elements=observations, degrees=module_responses, mask=module_masks

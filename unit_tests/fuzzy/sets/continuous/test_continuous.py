@@ -83,8 +83,8 @@ class TestContinuousFuzzySet(unittest.TestCase):
             assert torch.allclose(
                 membership_func.get_widths(), loaded_membership_func.get_widths()
             )
-            if (
-                type(subclass) == Gaussian
+            if isinstance(
+                subclass, Gaussian
             ):  # Gaussian has an additional parameter (alias for widths)
                 assert torch.allclose(
                     membership_func.sigmas, loaded_membership_func.sigmas

@@ -95,6 +95,15 @@ class LogGaussian(ContinuousFuzzySet):
         )
 
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
+        """
+        Calculate the membership of the observations to the Log Gaussian fuzzy set.
+
+        Args:
+            observations: The observations to calculate the membership for.
+
+        Returns:
+            The membership degrees of the observations for the Log Gaussian fuzzy set.
+        """
         return LogGaussian.internal_calculate_membership(
             observations=observations,
             centers=self.get_centers(),
@@ -271,6 +280,15 @@ class Lorentzian(ContinuousFuzzySet):
         )
 
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
+        """
+        Calculate the membership of the observations to the Lorentzian fuzzy set.
+
+        Args:
+            observations: The observations to calculate the membership for.
+
+        Returns:
+            The membership degrees of the observations for the Lorentzian fuzzy set.
+        """
         return Lorentzian.internal_calculate_membership(
             observations=observations,
             centers=self.get_centers(),
