@@ -40,7 +40,7 @@ class TestAlgebraicProduct(unittest.TestCase):
         mu_pytorch = tnorm(element)
         mu_numpy = algebraic_product(
             element.cpu().detach().numpy(),
-            importance_before_calculation.detach().numpy(),
+            importance_before_calculation.cpu().detach().numpy(),
         )
 
         # make sure the parameters are still identical afterward
@@ -62,7 +62,7 @@ class TestAlgebraicProduct(unittest.TestCase):
         mu_pytorch = tnorm(elements)
         mu_numpy = algebraic_product(
             elements.cpu().detach().numpy(),
-            importance_before_calculation.detach().numpy(),
+            importance_before_calculation.cpu().detach().numpy(),
         )
 
         # make sure the parameters are still identical afterward
@@ -85,7 +85,7 @@ class TestAlgebraicProduct(unittest.TestCase):
         mu_pytorch = tnorm(elements)
         mu_numpy = algebraic_product(
             elements.cpu().detach().numpy(),
-            importance_before_calculation.detach().numpy(),
+            importance_before_calculation.cpu().detach().numpy(),
         )
 
         # make sure the parameters are still identical afterward

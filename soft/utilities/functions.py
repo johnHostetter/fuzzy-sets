@@ -5,11 +5,10 @@ Utility functions, such as for getting the powerset of an iterable.
 import inspect
 from pathlib import Path
 from collections.abc import Iterable
+from typing import Dict, Any, Set, Union
 from itertools import chain, combinations
-from typing import Dict, Any, List, Set, Union
 
 import torch
-import numpy as np
 from natsort import natsorted  # sorts lists "naturally"
 
 from soft.utilities.reproducibility import path_to_project_root
@@ -43,9 +42,7 @@ def all_subclasses(cls) -> Set[Any]:
     return {cls}.union(s for c in cls.__subclasses__() for s in all_subclasses(c))
 
 
-def find_centers_and_widths(
-    data_point, minimums, maximums, alpha: float
-) -> List[Dict[str, float]]:
+def find_widths(data_point, minimums, maximums, alpha: float) -> torch.Tensor:
     """
     Find the centers and widths to be used for a newly created fuzzy set.
 
@@ -64,22 +61,32 @@ def find_centers_and_widths(
     # values that are the minimum/maximum. Otherwise, when determining the Gaussian membership,
     # a division by zero will occur; it essentially acts as an error tolerance.
     theta: float = 1e-8
-    parameters: List[Dict[str, float]] = []
+    sigmas = torch.empty((0, 0))
     for dim, attribute_value in enumerate(data_point):
-        left_width: float = torch.sqrt(
+        left_width: torch.Tensor = torch.sqrt(
             -1.0
-            * (torch.pow((minimums[dim] - attribute_value) + theta, 2) / np.log(alpha))
-        ).item()
-        right_width: float = torch.sqrt(
+            * (
+                torch.pow((minimums[dim] - attribute_value) + theta, 2)
+                / torch.log(torch.as_tensor([alpha], device=attribute_value.device))
+            )
+        )
+        right_width: torch.Tensor = torch.sqrt(
             -1.0
-            * (torch.pow((maximums[dim] - attribute_value) + theta, 2) / np.log(alpha))
-        ).item()
-        aggregated_sigma: float = regulator(left_width, right_width)
-        parameters.append({"centers": attribute_value, "widths": aggregated_sigma})
-    return parameters
+            * (
+                torch.pow((maximums[dim] - attribute_value) + theta, 2)
+                / torch.log(torch.as_tensor([alpha], device=attribute_value.device))
+            )
+        )
+        aggregated_sigma: torch.Tensor = regulator(left_width, right_width)
+        if sigmas.shape[0] == 0:
+            sigmas = aggregated_sigma
+        else:
+            sigmas = torch.hstack((sigmas, aggregated_sigma))
+
+    return sigmas
 
 
-def regulator(sigma_1: float, sigma_2: float) -> float:
+def regulator(sigma_1: torch.Tensor, sigma_2: torch.Tensor) -> torch.Tensor:
     """
     Regulator function as defined in CLIP.
 
@@ -92,21 +99,6 @@ def regulator(sigma_1: float, sigma_2: float) -> float:
         Gaussian membership function is not warped.
     """
     return (1 / 2) * (sigma_1 + sigma_2)
-
-
-def convert_to_tensor(values: np.ndarray) -> torch.Tensor:
-    """
-    If the given values are not torch.Tensor, convert them to torch.Tensor.
-
-    Args:
-        values: Values such as the centers or widths of a fuzzy set.
-
-    Returns:
-        torch.tensor(np.array(values))
-    """
-    if isinstance(values, torch.Tensor):
-        return values
-    return torch.tensor(np.array(values)).float()
 
 
 def get_object_attributes(obj_instance) -> Dict[str, Any]:

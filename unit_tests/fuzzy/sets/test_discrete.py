@@ -58,7 +58,9 @@ class TestDiscreteFuzzySet(unittest.TestCase):
 
     def test_discrete_fuzzy_set_plot(self) -> None:
         discrete_fuzzy_set = known()
-        figure, axes = discrete_fuzzy_set.plot(lower=0, upper=100, samples=100)
+        _, axes = discrete_fuzzy_set.plot(
+            lower=0, upper=100, samples=100
+        )  # ignore figure
         assert axes.get_title() == "Known Fuzzy Set"
         assert axes.get_xlabel() == "Elements of Universe"
         assert axes.get_ylabel() == "Degree of Membership"
@@ -67,7 +69,9 @@ class TestDiscreteFuzzySet(unittest.TestCase):
 
         # now checking that removing the name changes it to an "Unnamed" DiscreteFuzzySet
         discrete_fuzzy_set.name = None
-        figure, axes = discrete_fuzzy_set.plot(lower=0, upper=100, samples=100)
+        _, axes = discrete_fuzzy_set.plot(
+            lower=0, upper=100, samples=100
+        )  # ignore figure
         assert axes.get_title() == "Unnamed Fuzzy Set"
 
 

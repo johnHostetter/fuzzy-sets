@@ -2,10 +2,33 @@
 Implements the t-norm fuzzy relations.
 """
 
+from enum import Enum
+
 import torch
 
 
-class AlgebraicProduct(torch.nn.Module):
+class TNorm(Enum):
+    """
+    Enumerates the types of t-norms.
+    """
+
+    PRODUCT = "product"  # i.e., algebraic product
+    MINIMUM = "minimum"
+    ACZEL_ALSINA = "aczel_alsina"  # not yet implemented
+    SOFTMAX_SUM = "softmax_sum"
+    SOFTMAX_MEAN = "softmax_mean"
+    LUKASIEWICZ = "generalized_lukasiewicz"
+    # the following are to be implemented
+    DRASTIC = "drastic"
+    NILPOTENT = "nilpotent"
+    HAMACHER = "hamacher"
+    EINSTEIN = "einstein"
+    YAGER = "yager"
+    DUBOIS = "dubois"
+    DIF = "dif"
+
+
+class AlgebraicProduct(torch.nn.Module):  # TODO: remove this class
     """
     Implementation of the Algebraic Product t-norm (Fuzzy AND).
     """
@@ -43,13 +66,3 @@ class AlgebraicProduct(torch.nn.Module):
             torch.abs(self.importance)
         )  # importance can only be [0, 1]
         return torch.prod(torch.mul(elements, self.importance))
-
-
-class Minimum:
-    # pylint: disable=too-few-public-methods
-    """
-    A placeholder class for operations expecting the minimum t-norm.
-    """
-
-    def __init__(self):
-        pass

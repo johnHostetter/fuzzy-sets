@@ -7,8 +7,7 @@ from typing import List, Union
 import sympy
 import torch
 
-from soft.utilities.functions import convert_to_tensor
-from soft.fuzzy.sets.continuous.abstract import ContinuousFuzzySet
+from soft.fuzzy.sets.continuous.abstract import ContinuousFuzzySet, Membership
 
 
 class LogGaussian(ContinuousFuzzySet):
@@ -30,25 +29,27 @@ class LogGaussian(ContinuousFuzzySet):
         self.width_multiplier = width_multiplier
         assert int(self.width_multiplier) in [1, 2]
 
-    @property
-    def sigmas(self) -> torch.Tensor:
-        """
-        Gets the sigma for the Gaussian fuzzy set; alias for the 'widths' parameter.
-
-        Returns:
-            torch.Tensor
-        """
-        return self.widths
-
-    @sigmas.setter
-    def sigmas(self, sigmas) -> None:
-        """
-        Sets the sigma for the Gaussian fuzzy set; alias for the 'widths' parameter.
-
-        Returns:
-            None
-        """
-        self.widths = sigmas
+    # @property
+    # @torch.jit.ignore
+    # def sigmas(self) -> torch.Tensor:
+    #     """
+    #     Gets the sigma for the Gaussian fuzzy set; alias for the 'widths' parameter.
+    #
+    #     Returns:
+    #         torch.Tensor
+    #     """
+    #     return self.widths
+    #
+    # @sigmas.setter
+    # @torch.jit.ignore
+    # def sigmas(self, sigmas) -> None:
+    #     """
+    #     Sets the sigma for the Gaussian fuzzy set; alias for the 'widths' parameter.
+    #
+    #     Returns:
+    #         None
+    #     """
+    #     self.widths = sigmas
 
     @staticmethod
     def internal_calculate_membership(
@@ -83,6 +84,7 @@ class LogGaussian(ContinuousFuzzySet):
         )
 
     @classmethod
+    @torch.jit.ignore
     def sympy_formula(cls) -> sympy.Expr:
         # centers (c), widths (sigma) and observations (x)
         center_symbol = sympy.Symbol("c")
@@ -93,11 +95,39 @@ class LogGaussian(ContinuousFuzzySet):
         )
 
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
+        """
+        Calculate the membership of the observations to the Log Gaussian fuzzy set.
+
+        Args:
+            observations: The observations to calculate the membership for.
+
+        Returns:
+            The membership degrees of the observations for the Log Gaussian fuzzy set.
+        """
         return LogGaussian.internal_calculate_membership(
             observations=observations,
-            centers=self.centers,
-            widths=self.widths,
+            centers=self.get_centers(),
+            widths=self.get_widths(),
             width_multiplier=self.width_multiplier,
+        )
+
+    def forward(self, observations) -> Membership:
+        if observations.ndim == self.get_centers().ndim:
+            observations = observations.unsqueeze(dim=-1)
+        # we do not need torch.float64 for observations
+        degrees: torch.Tensor = self.calculate_membership(observations.float())
+
+        # assert (
+        #     not degrees.isnan().any()
+        # ), "NaN values detected in the membership degrees."
+        # assert (
+        #     not degrees.isinf().any()
+        # ), "Infinite values detected in the membership degrees."
+
+        return Membership(
+            elements=observations,
+            degrees=degrees.to_sparse() if self.use_sparse_tensor else degrees,
+            mask=self.get_mask(),
         )
 
 
@@ -130,23 +160,53 @@ class Gaussian(LogGaussian):
         Returns:
             The membership degrees of the observations for the Gaussian fuzzy set.
         """
-        return LogGaussian.internal_calculate_membership(
-            centers=centers,
-            widths=widths,
-            width_multiplier=width_multiplier,
-            observations=observations,
-        ).exp()
+        return torch.exp(
+            -1.0
+            * (
+                torch.pow(
+                    observations - centers,
+                    2,
+                )
+                / (width_multiplier * torch.pow(widths, 2) + 1e-32)
+            )
+        )
+        # return LogGaussian.internal_calculate_membership(
+        #     centers=centers,
+        #     widths=widths,
+        #     width_multiplier=width_multiplier,
+        #     observations=observations,
+        # ).exp()
 
     @classmethod
+    @torch.jit.ignore
     def sympy_formula(cls) -> sympy.Expr:
         return sympy.exp(LogGaussian.sympy_formula())
 
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
         return Gaussian.internal_calculate_membership(
             observations=observations,
-            centers=self.centers,
-            widths=self.widths,
+            centers=self.get_centers(),
+            widths=self.get_widths(),
             width_multiplier=1.0,
+        )
+
+    def forward(self, observations) -> Membership:
+        if observations.ndim == self.get_centers().ndim:
+            observations = observations.unsqueeze(dim=-1)
+        # we do not need torch.float64 for observations
+        degrees: torch.Tensor = self.calculate_membership(observations.float())
+
+        # assert (
+        #     not degrees.isnan().any()
+        # ), "NaN values detected in the membership degrees."
+        # assert (
+        #     not degrees.isinf().any()
+        # ), "Infinite values detected in the membership degrees."
+
+        return Membership(
+            elements=observations,
+            degrees=degrees.to_sparse() if self.use_sparse_tensor else degrees,
+            mask=self.get_mask(),
         )
 
 
@@ -165,6 +225,7 @@ class Lorentzian(ContinuousFuzzySet):
         super().__init__(centers=centers, widths=widths, labels=labels, device=device)
 
     @property
+    @torch.jit.ignore
     def sigmas(self) -> torch.Tensor:
         """
         Gets the sigma for the Lorentzian fuzzy set; alias for the 'widths' parameter.
@@ -175,6 +236,7 @@ class Lorentzian(ContinuousFuzzySet):
         return self.widths
 
     @sigmas.setter
+    @torch.jit.ignore
     def sigmas(self, sigmas) -> None:
         """
         Sets the sigma for the Lorentzian fuzzy set; alias for the 'widths' parameter.
@@ -207,6 +269,7 @@ class Lorentzian(ContinuousFuzzySet):
         return 1 / (1 + torch.pow((centers - observations) / (0.5 * widths), 2))
 
     @classmethod
+    @torch.jit.ignore
     def sympy_formula(cls) -> sympy.Expr:
         # centers (c), widths (sigma) and observations (x)
         center_symbol = sympy.Symbol("c")
@@ -217,8 +280,38 @@ class Lorentzian(ContinuousFuzzySet):
         )
 
     def calculate_membership(self, observations: torch.Tensor) -> torch.Tensor:
+        """
+        Calculate the membership of the observations to the Lorentzian fuzzy set.
+
+        Args:
+            observations: The observations to calculate the membership for.
+
+        Returns:
+            The membership degrees of the observations for the Lorentzian fuzzy set.
+        """
         return Lorentzian.internal_calculate_membership(
-            observations=observations, centers=self.centers, widths=self.widths
+            observations=observations,
+            centers=self.get_centers(),
+            widths=self.get_widths(),
+        )
+
+    def forward(self, observations) -> Membership:
+        if observations.ndim == self.get_centers().ndim:
+            observations = observations.unsqueeze(dim=-1)
+        # we do not need torch.float64 for observations
+        degrees: torch.Tensor = self.calculate_membership(observations.float())
+
+        assert (
+            not degrees.isnan().any()
+        ), "NaN values detected in the membership degrees."
+        assert (
+            not degrees.isinf().any()
+        ), "Infinite values detected in the membership degrees."
+
+        return Membership(
+            elements=observations,
+            degrees=degrees.to_sparse() if self.use_sparse_tensor else degrees,
+            mask=self.get_mask(),
         )
 
 
@@ -308,6 +401,7 @@ class Triangular(ContinuousFuzzySet):
         )
 
     @classmethod
+    @torch.jit.ignore
     def sympy_formula(cls) -> sympy.Expr:
         # centers (c), widths (w) and observations (x)
         center_symbol = sympy.Symbol("c")
@@ -330,5 +424,26 @@ class Triangular(ContinuousFuzzySet):
             The membership degrees of the observations for the Triangular fuzzy set.
         """
         return Triangular.internal_calculate_membership(
-            observations=observations, centers=self.centers, widths=self.widths
+            observations=observations,
+            centers=self.get_centers(),
+            widths=self.get_widths(),
+        )
+
+    def forward(self, observations) -> Membership:
+        if observations.ndim == self.get_centers().ndim:
+            observations = observations.unsqueeze(dim=-1)
+        # we do not need torch.float64 for observations
+        degrees: torch.Tensor = self.calculate_membership(observations.float())
+
+        assert (
+            not degrees.isnan().any()
+        ), "NaN values detected in the membership degrees."
+        assert (
+            not degrees.isinf().any()
+        ), "Infinite values detected in the membership degrees."
+
+        return Membership(
+            elements=observations,
+            degrees=degrees.to_sparse() if self.use_sparse_tensor else degrees,
+            mask=self.get_mask(),
         )
