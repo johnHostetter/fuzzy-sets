@@ -10,7 +10,7 @@ from soft.fuzzy.sets.continuous.impl import Gaussian
 AVAILABLE_DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def gaussian_numpy(element: torch.Tensor, center: np.ndarray, sigma: np.ndarray):
+def gaussian_numpy(element: np.ndarray, center: np.ndarray, sigma: np.ndarray):
     """
         Gaussian membership function that receives an 'element' value, and uses
         the 'center' and 'sigma' to determine a degree of membership for 'element'.
@@ -335,16 +335,6 @@ class TestGaussian(unittest.TestCase):
         element = np.array(
             [[0.0001712], [0.00393354], [-0.03641258], [-0.01936134]], dtype=np.float32
         )
-        target_membership_degrees = torch.tensor(
-            [
-                [9.99838713e-01, 4.31743848e-01, 2.43841216e-01, 1.16034294e-02],
-                [9.99921482e-01, 4.24180250e-01, 2.61315148e-01, 7.60781045e-04],
-                [2.90003716e-06, 9.57533725e-01, 5.72716157e-01, 1.25096619e-01],
-                [7.10183084e-03, 9.99475820e-01, 4.39181758e-01, 7.51629554e-03],
-            ],
-            device=AVAILABLE_DEVICE,
-            dtype=torch.float32,
-        )
         centers = np.array(
             [
                 [0.01497397, -1.3607662, 1.0883657, 1.9339248],
@@ -360,6 +350,15 @@ class TestGaussian(unittest.TestCase):
                 [1.24709336, 0.10437003, 0.12908118, 0.08517358],
                 [0.08517358, 1.54283158, 1.89779089, 1.27380911],
             ]
+        )
+        target_membership_degrees = torch.tensor(
+            gaussian_numpy(
+                element[:, :, None],
+                center=centers,
+                sigma=sigmas,
+            ),
+            device=AVAILABLE_DEVICE,
+            dtype=torch.float32,
         )
 
         gaussian_mf = Gaussian(
